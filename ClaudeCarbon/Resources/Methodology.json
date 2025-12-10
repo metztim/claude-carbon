@@ -1,0 +1,58 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-01-01",
+  "sources": [
+    "TokenPowerBench 2024",
+    "Epoch AI",
+    "EPA 2024"
+  ],
+  "models": {
+    "haiku": {
+      "joulesPerToken": 0.3,
+      "confidence": "low",
+      "notes": "Inferred from pricing ratio relative to Sonnet"
+    },
+    "sonnet": {
+      "joulesPerToken": 1.0,
+      "confidence": "medium",
+      "notes": "Middle of research range (0.4-4 J/token)"
+    },
+    "opus": {
+      "joulesPerToken": 2.0,
+      "confidence": "low",
+      "notes": "Inferred from pricing ratio relative to Sonnet"
+    }
+  },
+  "infrastructure": {
+    "pue": {
+      "value": 1.2,
+      "confidence": "medium",
+      "notes": "Industry average for modern data centers"
+    },
+    "carbonIntensity": {
+      "value": 384,
+      "unit": "gCO2e/kWh",
+      "confidence": "high",
+      "notes": "US grid average 2024"
+    }
+  },
+  "estimation": {
+    "outputMultiplier": {
+      "value": 4.0,
+      "confidence": "medium",
+      "notes": "Typical Claude Code input/output ratio - responses typically 4x longer than prompts"
+    },
+    "charsPerToken": {
+      "value": 4,
+      "notes": "Approximate average for English text"
+    }
+  },
+  "householdComparisons": [
+    {"threshold": 0.01, "description": "LED bulb for 1 second"},
+    {"threshold": 0.1, "description": "LED bulb for 10 seconds"},
+    {"threshold": 1.0, "description": "Charging phone 0.05%"},
+    {"threshold": 10.0, "description": "Laptop running 30 seconds"},
+    {"threshold": 100.0, "description": "Charging phone 5%"},
+    {"threshold": 1000.0, "description": "Running a microwave for 1 minute"}
+  ]
+}
