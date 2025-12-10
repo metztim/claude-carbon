@@ -16,7 +16,7 @@ A macOS menu bar app that tracks energy consumption and carbon footprint of Clau
 
 ### Option 1: Download Pre-built App
 
-1. Download the latest release from [Releases](https://github.com/yourusername/claude-carbon/releases)
+1. Download the latest release from [Releases](https://github.com/metztim/claude-carbon/releases)
 2. Move `ClaudeCarbon.app` to your Applications folder
 3. Run the installation script to enable tracking:
    ```bash
@@ -30,7 +30,7 @@ A macOS menu bar app that tracks energy consumption and carbon footprint of Clau
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/claude-carbon.git
+   git clone https://github.com/metztim/claude-carbon.git
    cd claude-carbon
    ```
 
@@ -132,11 +132,11 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- Built as part of the [AI Watchdog](https://github.com/yourusername/ai-watchdog) project
+- Built as part of the [AI Watchdog](https://github.com/metztim/ai-watchdog) project
 - Energy research based on TokenPowerBench 2024 and Epoch AI data
 - Carbon intensity data from EPA 2024
 
 ## Learn More
 
 - [METHODOLOGY.md](METHODOLOGY.md) - Detailed technical methodology
-- [AI Watchdog Project](https://github.com/yourusername/ai-watchdog) - Research on AI accountability
+- [AI Watchdog Project](https://github.com/metztim/ai-watchdog) - Research on AI accountability
