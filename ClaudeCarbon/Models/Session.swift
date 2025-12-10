@@ -5,11 +5,12 @@ struct Session: Codable, Identifiable {
     let id: UUID
     let sessionId: String
     let projectPath: String?
-    let startTime: Date
+    var startTime: Date
     var lastActivityTime: Date
     var inputTokens: Int
-    var estimatedOutputTokens: Int
+    var outputTokens: Int
     let modelName: String
+    var actualModel: String?
 
     init(
         id: UUID = UUID(),
@@ -18,8 +19,9 @@ struct Session: Codable, Identifiable {
         startTime: Date = Date(),
         lastActivityTime: Date = Date(),
         inputTokens: Int = 0,
-        estimatedOutputTokens: Int = 0,
-        modelName: String = "sonnet"
+        outputTokens: Int = 0,
+        modelName: String = "sonnet",
+        actualModel: String? = nil
     ) {
         self.id = id
         self.sessionId = sessionId
@@ -27,11 +29,12 @@ struct Session: Codable, Identifiable {
         self.startTime = startTime
         self.lastActivityTime = lastActivityTime
         self.inputTokens = inputTokens
-        self.estimatedOutputTokens = estimatedOutputTokens
+        self.outputTokens = outputTokens
         self.modelName = modelName
+        self.actualModel = actualModel
     }
 
     var totalTokens: Int {
-        inputTokens + estimatedOutputTokens
+        inputTokens + outputTokens
     }
 }

@@ -15,8 +15,10 @@ struct ClaudeCarbonApp: App {
     @StateObject private var dataStore = DataStore()
     @StateObject private var historyMonitor = HistoryMonitor()
 
-    // SessionCoordinator bridges HistoryMonitor -> TokenEstimator -> DataStore
-    // Initialized lazily after StateObjects are ready
+    // SessionJSONLMonitor needs DataStore at init, so initialized lazily
+    @State private var sessionJSONLMonitor: SessionJSONLMonitor?
+
+    // SessionCoordinator bridges HistoryMonitor + SessionJSONLMonitor -> DataStore
     @State private var sessionCoordinator: SessionCoordinator?
 
     private let energyCalculator = EnergyCalculator()
@@ -30,11 +32,15 @@ struct ClaudeCarbonApp: App {
                 energyCalculator: energyCalculator
             )
             .onAppear {
-                // Initialize coordinator once views are ready
-                if sessionCoordinator == nil {
+                // Initialize services once views are ready
+                if sessionJSONLMonitor == nil {
+                    sessionJSONLMonitor = SessionJSONLMonitor(dataStore: dataStore)
+                }
+                if sessionCoordinator == nil, let monitor = sessionJSONLMonitor {
                     sessionCoordinator = SessionCoordinator(
                         dataStore: dataStore,
-                        historyMonitor: historyMonitor
+                        historyMonitor: historyMonitor,
+                        sessionJSONLMonitor: monitor
                     )
                 }
             }
