@@ -2,14 +2,19 @@
 
 A macOS menu bar app that tracks energy consumption and carbon footprint of Claude Code sessions in real-time.
 
+## Why?
+
+AI usage has an environmental cost. Every API call consumes energy and generates carbon emissions. Most people have no visibility into this impact.
+
+Claude Carbon makes the invisible visible - translating your token usage into relatable equivalents like "laptop running for 6 hours" or "phone charges." The goal isn't to shame you into using AI less, but to help you make informed choices (like using Haiku for simple tasks instead of Opus).
+
 ## Features
 
-- **Real-time tracking**: Monitors Claude Code sessions via ~/.claude/history.jsonl
-- **Token estimation**: Estimates input/output tokens from prompts using character-based approximation
-- **Energy calculation**: Converts token counts to energy consumption (Wh) and carbon emissions (gCO2e)
-- **Model support**: Tracks Haiku, Sonnet, and Opus models with different energy coefficients
-- **Household comparisons**: Translates abstract metrics into relatable equivalents (e.g., "LED bulb for 10 seconds")
-- **Historical tracking**: View session history and cumulative statistics
+- **Accurate token tracking**: Reads actual input/output tokens from Claude Code's session logs
+- **Model-aware calculations**: Different energy estimates for Opus, Sonnet, and Haiku
+- **Real-time feedback**: Menu bar icon pulses when tokens are being consumed
+- **Household comparisons**: Translates abstract metrics into relatable equivalents (LED bulb, phone charge, laptop hours)
+- **Historical tracking**: View today, this week, or all-time statistics
 - **Transparent methodology**: All calculations are open and documented (see [METHODOLOGY.md](METHODOLOGY.md))
 
 ## Installation
@@ -90,41 +95,32 @@ The app uses a JSON-based methodology file (`Methodology.json`) that can be cust
 
 ## How It Works
 
-1. **Hook integration**: ClaudeCarbon installs hooks in `~/.claude/settings.json` that trigger on prompt submission
-2. **Event capture**: The app receives events via URL scheme (`claudecarbon://event`)
-3. **History monitoring**: Monitors `~/.claude/history.jsonl` to read prompt text
-4. **Token estimation**: Estimates tokens using character count / 4 (configurable)
-5. **Energy calculation**:
-   - Tokens × Model J/token × PUE = Energy (J)
+1. **Session monitoring**: Watches `~/.claude/history.jsonl` for new Claude Code sessions
+2. **Token tracking**: Reads actual token counts from `~/.claude/projects/{path}/{session}.jsonl`
+3. **Energy calculation**:
+   - Tokens × Model-specific J/token × PUE = Energy (J)
    - Energy (J) / 3600 = Energy (Wh)
    - Energy (Wh) × Carbon intensity / 1000 = CO2 (g)
-6. **Display**: Shows results in menu bar with household comparisons
+4. **Display**: Shows results in menu bar with household comparisons
 
 For detailed technical documentation, see [METHODOLOGY.md](METHODOLOGY.md).
 
 ## Limitations
 
-- **Token estimation accuracy**: Uses character-based approximation (not true tokenization)
-- **Energy coefficient uncertainty**: Model-specific values are inferred or research-based (see confidence levels)
-- **Output token estimation**: Uses a 2.5× multiplier which may vary by use case
-- **No API access**: Cannot read actual token counts from Anthropic API
-- **Single model tracking**: Assumes consistent model use within sessions
+- **Energy coefficient uncertainty**: Model-specific J/token values are inferred from pricing ratios (see confidence levels in methodology)
+- **US grid average**: Carbon intensity uses EPA 2024 data for US average (384 gCO2/kWh)
+- **Claude Code only**: Currently tracks CLI usage; Claude web/desktop app integration is planned
 
-These limitations are documented transparently in the methodology. We welcome contributions to improve accuracy.
+These limitations are documented transparently. Contributions to improve accuracy are welcome.
 
 ## Contributing
 
-Contributions are welcome, especially:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- **Better energy coefficients**: Share research or measured data on Claude model energy consumption
-- **Token estimation improvements**: Alternative approaches to character-based estimation
-- **Infrastructure data**: More accurate PUE and carbon intensity values
-- **Feature requests**: Ideas for better visualization or tracking
-
-To contribute:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request with clear description
+Areas where help is especially appreciated:
+- **Methodology improvements**: Better J/token estimates, regional carbon intensity
+- **Gamification**: Personal bests, achievements, efficiency scores
+- **Research**: AI energy consumption data and sources
 
 ## License
 

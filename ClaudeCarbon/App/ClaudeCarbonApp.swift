@@ -14,6 +14,7 @@ struct ClaudeCarbonApp: App {
     // Services as StateObjects for SwiftUI lifecycle
     @StateObject private var dataStore = DataStore()
     @StateObject private var historyMonitor = HistoryMonitor()
+    @StateObject private var activityIndicator = ActivityIndicator()
 
     // SessionJSONLMonitor needs DataStore at init, so initialized lazily
     @State private var sessionJSONLMonitor: SessionJSONLMonitor?
@@ -31,10 +32,7 @@ struct ClaudeCarbonApp: App {
                 energyCalculator: energyCalculator
             )
             .onAppear {
-                // Initialize services once views are ready
-                if sessionJSONLMonitor == nil {
-                    sessionJSONLMonitor = SessionJSONLMonitor(dataStore: dataStore)
-                }
+                // Initialize SessionCoordinator when menu opens (needs monitor from label's .task)
                 if sessionCoordinator == nil, let monitor = sessionJSONLMonitor {
                     sessionCoordinator = SessionCoordinator(
                         dataStore: dataStore,
@@ -44,7 +42,15 @@ struct ClaudeCarbonApp: App {
                 }
             }
         } label: {
-            Image(systemName: "leaf.fill")
+            MenuBarIconView(activityIndicator: activityIndicator)
+                .task {
+                    // Initialize monitoring on app launch (not on menu click)
+                    if sessionJSONLMonitor == nil {
+                        let monitor = SessionJSONLMonitor(dataStore: dataStore)
+                        sessionJSONLMonitor = monitor
+                        activityIndicator.connect(to: monitor)
+                    }
+                }
         }
         .menuBarExtraStyle(.window)
     }

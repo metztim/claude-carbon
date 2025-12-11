@@ -548,3 +548,141 @@ Researched AI-assisted UX design tools (Gemini 3, v0.dev, Uizard) and created a 
 - Files modified: 4
 - New UI components: 3 (HeroComparisonView, CompactStatsRow, CompactStatItem)
 - Bugs fixed: 2 (time filter, layout jumping)
+
+---
+
+## Session Log: 2025-12-11
+
+**Project**: claude-carbon
+**Type**: [feature]
+
+### Objectives
+- Explore dynamic menu bar icon to provide real-time feedback on token usage
+- Implement initial version (subtle pulse animation)
+- Document future ideas for later consideration
+
+### Summary
+Discussed various approaches for making the menu bar icon responsive to token usage. Evaluated options including color changes (budget-based, rolling window), intensity variations, and activity indicators. Decided to start with the simplest approach: a subtle pulse animation when actively consuming tokens. Implemented the feature using macOS 14's `symbolEffect(.pulse)` API. Also documented future feature ideas (Claude web/desktop integration, personal best leaderboard) and created a session reminder system.
+
+### Files Changed
+- `ClaudeCarbon/Services/ActivityIndicator.swift` - NEW: Tracks token activity, sets isActive for 2s with debouncing
+- `ClaudeCarbon/Views/MenuBarIconView.swift` - NEW: Leaf icon with SF Symbol pulse animation
+- `ClaudeCarbon/App/ClaudeCarbonApp.swift` - Wired ActivityIndicator to SessionJSONLMonitor, uses new icon view
+- `ClaudeCarbon.xcodeproj/project.pbxproj` - Added new files, bumped deployment target to macOS 14.0
+- `docs/DYNAMIC_ICON_IDEAS.md` - NEW: Documents future icon enhancement ideas
+- `docs/FUTURE_IDEAS.md` - NEW: Captures broader feature ideas for future sessions
+- `CLAUDE.md` - NEW: Created with session reminder for future ideas
+
+### Technical Notes
+- `symbolEffect(.pulse)` requires macOS 14+ - decided to bump deployment target from 13.0 to 14.0
+- ActivityIndicator subscribes to SessionJSONLMonitor's `tokenUpdate` publisher
+- 2-second active window with debouncing prevents flickering during bursts of activity
+- Menu bar labels in SwiftUI support SF Symbol animations
+
+### Future Plans & Unimplemented Phases
+
+#### Dynamic Icon Color Variations
+**Status**: Documented, not implemented
+**Ideas captured in `docs/DYNAMIC_ICON_IDEAS.md`**:
+- Budget-based color (user sets daily target, icon shifts green→yellow→red)
+- Intensity-only (green varies in saturation/brightness)
+- Rolling window (color based on last 60 min usage)
+- Leaf fullness (different SF Symbols for different states)
+- Threshold alerts (only change at milestones like 100k tokens)
+
+#### Claude Web/Desktop Integration
+**Status**: Idea captured in `docs/FUTURE_IDEAS.md`
+- Goal: Track usage from Claude web interface and desktop app
+- Challenge: Unknown how to access that data (browser extension? API interception?)
+
+#### Personal Best Leaderboard
+**Status**: Idea captured in `docs/FUTURE_IDEAS.md`
+- Goal: Gamify efficiency by tracking lowest-usage days
+- Key metric: tokens per active hour (not raw daily totals)
+- Normalizes for days with different work hours
+
+### Next Actions
+- [ ] Build and test pulse animation in Xcode (xcodebuild not available in CLI)
+- [ ] Review `docs/FUTURE_IDEAS.md` when ready to expand features
+- [ ] Consider whether pulse duration (2s) feels right in practice
+- [ ] Remove CLAUDE.md reminder after addressing future ideas
+
+### Metrics
+- Files created: 5
+- Files modified: 2
+- Deployment target: 13.0 → 14.0
+
+---
+
+## Session Log: 2025-12-11
+
+**Project**: claude-carbon
+**Type**: [bugfix]
+
+### Objectives
+- Investigate why token usage display was stuck at 204k despite active Claude Code usage
+
+### Summary
+Diagnosed and fixed a critical bug where new JSONL files in project subdirectories weren't being monitored. The `SessionJSONLMonitor` only watched the top-level `~/.claude/projects` directory, missing new files created in existing subdirectories. Added `SubdirectoryMonitor` class to watch each project directory for new JSONL files.
+
+### Files Changed
+- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Added subdirectory monitoring to detect new JSONL files in project directories
+
+### Technical Notes
+- **Root cause**: `DispatchSource.makeFileSystemObjectSource` on a directory only detects changes TO the directory itself (new subdirectories), not changes WITHIN subdirectories (new files)
+- **Evidence found**:
+  - Database showed 8 sessions from today with 0 tokens (untracked)
+  - Only files from `-Users-timmetz/` directory were being tracked
+  - 43 project directories exist but most weren't monitored
+  - JSONL files like `c0dffd8b...jsonl` (605KB) existed but weren't in tracking DB
+- **Fix implemented**:
+  - Added `monitoredDirectories: [String: SubdirectoryMonitor]` to track watched directories
+  - Added `SubdirectoryMonitor` class using `O_EVTONLY` file descriptor monitoring
+  - Modified `scanExistingProjects()` to set up monitors for each project subdirectory
+  - When subdirectory changes, `scanProjectDirectory()` finds and monitors new JSONL files
+
+### Future Plans & Unimplemented Phases
+None planned for this bugfix session.
+
+### Next Actions
+- [ ] Rebuild and restart Claude Carbon in Xcode to apply the fix
+- [ ] Verify console shows "Started monitoring directory" logs for all project dirs
+- [ ] Confirm today's token count updates after restart (should jump from 204k)
+- [ ] Monitor for a few sessions to ensure new files are detected in real-time
+
+### Metrics
+- Files modified: 1
+- Lines added: ~60 (SubdirectoryMonitor class + directory tracking logic)
+
+---
+
+## Session Log: 2025-12-11
+
+**Project**: claude-carbon
+**Type**: [bugfix]
+
+### Objectives
+- Fix menu bar icon not lighting up based on Claude Code usage
+
+### Summary
+Fixed a timing bug where the `SessionJSONLMonitor` and `ActivityIndicator` connection were initialized inside `MenuBarView.onAppear`, which only fires when the user clicks the menu bar icon. Moved initialization to a `.task` modifier on the label view, which fires at app launch. Also fixed an Xcode warning about an unused variable binding in DataStore.
+
+### Files Changed
+- `ClaudeCarbon/App/ClaudeCarbonApp.swift` - Moved SessionJSONLMonitor creation and ActivityIndicator connection from content's `onAppear` to label's `.task` so it runs at app launch instead of on menu click
+- `ClaudeCarbon/Services/DataStore.swift` - Changed `if let days = days` to `if days != nil` to fix unused variable warning
+
+### Technical Notes
+- **Root cause**: In SwiftUI `MenuBarExtra`, the `label:` closure (the icon) appears at app launch, but the content closure's `onAppear` only fires when user clicks the icon to open the dropdown
+- **Fix approach**: Using `.task` on the label view runs initialization when the icon appears (app launch), not when dropdown opens
+- **Warning fix**: `if let days = days` was creating an unused binding; we only needed the nil check, not the unwrapped value
+
+### Future Plans & Unimplemented Phases
+None planned for this bugfix session.
+
+### Next Actions
+- [ ] Build and test in Xcode - verify icon pulses when Claude Code is active
+- [ ] Verify the Xcode warning is gone after rebuild
+
+### Metrics
+- Files modified: 2
+- Lines changed: ~15

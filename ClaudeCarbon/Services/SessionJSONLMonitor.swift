@@ -37,6 +37,9 @@ class SessionJSONLMonitor: ObservableObject {
     // Track file offsets per JSONL file (in-memory cache, persisted to dataStore)
     private var fileOffsets: [String: UInt64] = [:]
 
+    // Track monitored subdirectories (project directories)
+    private var monitoredDirectories: [String: SubdirectoryMonitor] = [:]
+
     // MARK: - Initialization
 
     init(dataStore: DataStore) {
@@ -78,6 +81,11 @@ class SessionJSONLMonitor: ObservableObject {
             monitor.stop()
         }
         monitoredFiles.removeAll()
+
+        for (_, monitor) in monitoredDirectories {
+            monitor.stop()
+        }
+        monitoredDirectories.removeAll()
         print("SessionJSONLMonitor: Stopped monitoring")
     }
 
@@ -137,21 +145,43 @@ class SessionJSONLMonitor: ObservableObject {
                 continue
             }
 
+            // Start monitoring this project subdirectory for new JSONL files
+            if monitoredDirectories[projectPath] == nil {
+                startMonitoringDirectory(atPath: projectPath)
+            }
+
             // Scan for JSONL files in this project directory
-            guard let files = try? fileManager.contentsOfDirectory(atPath: projectPath) else {
-                continue
+            scanProjectDirectory(atPath: projectPath)
+        }
+    }
+
+    private func scanProjectDirectory(atPath projectPath: String) {
+        let fileManager = FileManager.default
+
+        guard let files = try? fileManager.contentsOfDirectory(atPath: projectPath) else {
+            return
+        }
+
+        for file in files {
+            guard file.hasSuffix(".jsonl") else { continue }
+
+            let filePath = (projectPath as NSString).appendingPathComponent(file)
+
+            // Only start monitoring if not already monitoring this file
+            if monitoredFiles[filePath] == nil {
+                startMonitoringFile(atPath: filePath)
             }
+        }
+    }
 
-            for file in files {
-                guard file.hasSuffix(".jsonl") else { continue }
+    private func startMonitoringDirectory(atPath path: String) {
+        let monitor = SubdirectoryMonitor(path: path, queue: monitorQueue) { [weak self] in
+            self?.scanProjectDirectory(atPath: path)
+        }
 
-                let filePath = (projectPath as NSString).appendingPathComponent(file)
-
-                // Only start monitoring if not already monitoring this file
-                if monitoredFiles[filePath] == nil {
-                    startMonitoringFile(atPath: filePath)
-                }
-            }
+        if monitor.start() {
+            monitoredDirectories[path] = monitor
+            print("SessionJSONLMonitor: Started monitoring directory \(path)")
         }
     }
 
@@ -317,6 +347,61 @@ private class FileMonitor {
         source.setCancelHandler { [weak self] in
             try? self?.fileHandle?.close()
             self?.fileHandle = nil
+        }
+
+        self.source = source
+        source.resume()
+
+        return true
+    }
+
+    func stop() {
+        source?.cancel()
+        source = nil
+    }
+}
+
+// MARK: - SubdirectoryMonitor Helper
+
+/// Monitors a directory for new files (used for project subdirectories)
+private class SubdirectoryMonitor {
+    private let path: String
+    private let queue: DispatchQueue
+    private let onChange: () -> Void
+
+    private var source: DispatchSourceFileSystemObject?
+    private var fd: Int32 = -1
+
+    init(path: String, queue: DispatchQueue, onChange: @escaping () -> Void) {
+        self.path = path
+        self.queue = queue
+        self.onChange = onChange
+    }
+
+    func start() -> Bool {
+        // Use open() syscall directly for directories
+        let fd = Darwin.open(path, O_RDONLY | O_EVTONLY)
+        guard fd >= 0 else {
+            return false
+        }
+
+        self.fd = fd
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .extend, .link],
+            queue: queue
+        )
+
+        source.setEventHandler { [weak self] in
+            self?.onChange()
+        }
+
+        source.setCancelHandler { [weak self] in
+            if let fd = self?.fd, fd >= 0 {
+                Darwin.close(fd)
+                self?.fd = -1
+            }
         }
 
         self.source = source

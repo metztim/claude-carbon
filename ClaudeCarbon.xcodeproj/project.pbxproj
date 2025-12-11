@@ -25,6 +25,8 @@
 		A10000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* Assets.xcassets */; };
 		A10000000000000000000011 /* Methodology.json in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* Methodology.json */; };
 		A10000000000000000000012 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* SessionCoordinator.swift */; };
+		A10000000000000000000014 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* ActivityIndicator.swift */; };
+		A10000000000000000000015 /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* MenuBarIconView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +48,8 @@
 		A20000000000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000011 /* Methodology.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Methodology.json; sourceTree = "<group>"; };
 		A20000000000000000000012 /* SessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoordinator.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
+		A20000000000000000000015 /* MenuBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconView.swift; sourceTree = "<group>"; };
 		A30000000000000000000001 /* ClaudeCarbon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeCarbon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -116,6 +120,7 @@
 				A20000000000000000000009 /* EnergyCalculator.swift */,
 				A2000000000000000000000A /* DataStore.swift */,
 				A20000000000000000000012 /* SessionCoordinator.swift */,
+				A20000000000000000000014 /* ActivityIndicator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -124,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000000000000000000000B /* MenuBarView.swift */,
+				A20000000000000000000015 /* MenuBarIconView.swift */,
 				A2000000000000000000000C /* SessionRow.swift */,
 				A2000000000000000000000D /* StatsView.swift */,
 				A2000000000000000000000E /* ComparisonView.swift */,
@@ -227,6 +233,8 @@
 				A1000000000000000000000E /* ComparisonView.swift in Sources */,
 				A1000000000000000000000F /* SettingsView.swift in Sources */,
 				A10000000000000000000012 /* SessionCoordinator.swift in Sources */,
+				A10000000000000000000014 /* ActivityIndicator.swift in Sources */,
+				A10000000000000000000015 /* MenuBarIconView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -286,7 +294,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -344,7 +352,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;

@@ -408,7 +408,7 @@ class DataStore: ObservableObject {
         let sql: String
         let hasDateFilter: Bool
 
-        if let days = days {
+        if days != nil {
             hasDateFilter = true
             sql = """
                 SELECT
