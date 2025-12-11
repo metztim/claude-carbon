@@ -28,7 +28,6 @@ struct ClaudeCarbonApp: App {
         MenuBarExtra {
             MenuBarView(
                 dataStore: dataStore,
-                historyMonitor: historyMonitor,
                 energyCalculator: energyCalculator
             )
             .onAppear {

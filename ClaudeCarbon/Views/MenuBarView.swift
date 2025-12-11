@@ -3,7 +3,6 @@ import SwiftUI
 /// Main popover view for the menu bar app
 struct MenuBarView: View {
     @ObservedObject var dataStore: DataStore
-    @ObservedObject var historyMonitor: HistoryMonitor
     let energyCalculator: EnergyCalculator
 
     @State private var selectedTimeRange: TimeRange = .today
@@ -17,113 +16,69 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header with title and time picker
             HStack {
                 Image(systemName: "leaf.fill")
                     .foregroundColor(.green)
-                    .font(.title2)
+                    .font(.title3)
                 Text("Claude Carbon")
                     .font(.headline)
+
                 Spacer()
-            }
-            .padding()
 
-            Divider()
-
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Current Session Section
-                    if let sessionId = historyMonitor.currentSessionId {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "circle.fill")
-                                    .foregroundColor(.green)
-                                    .font(.caption)
-                                Text("Active Session")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-
-                            Text(sessionId)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-
-                            if let lastPromptTime = historyMonitor.lastPromptTime {
-                                Text(timeAgo(from: lastPromptTime))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding()
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(8)
-                    }
-
-                    // Stats Section with Time Range Picker
-                    VStack(spacing: 12) {
-                        // Time Range Picker
-                        Picker("Time Range", selection: $selectedTimeRange) {
-                            ForEach(TimeRange.allCases, id: \.self) { range in
-                                Text(range.rawValue).tag(range)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        // Stats Display
-                        StatsView(
-                            tokens: currentStats.tokens,
-                            energyWh: currentStats.energyWh,
-                            carbonG: currentStats.carbonG
-                        )
-                    }
-                    .padding()
-                    .background(Color.secondary.opacity(0.05))
-                    .cornerRadius(8)
-
-                    // Household Comparison
-                    if currentStats.energyWh > 0 {
-                        ComparisonView(energyWh: currentStats.energyWh)
-                            .padding()
-                            .background(Color.green.opacity(0.1))
-                            .cornerRadius(8)
+                // Compact time picker
+                Picker("", selection: $selectedTimeRange) {
+                    ForEach(TimeRange.allCases, id: \.self) { range in
+                        Text(range.rawValue).tag(range)
                     }
                 }
-                .padding()
+                .pickerStyle(.segmented)
+                .frame(width: 200)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
             Divider()
 
-            // Footer with Settings and Quit buttons
-            HStack(spacing: 12) {
-                Button(action: {
-                    showingSettings = true
-                }) {
-                    HStack {
-                        Image(systemName: "gear")
-                        Text("Settings")
-                    }
+            // Hero: Energy Impact Equivalent
+            HeroComparisonView(energyWh: currentStats.energyWh)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+
+            Divider()
+
+            // Compact stats row
+            CompactStatsRow(
+                tokens: currentStats.tokens,
+                tokensByModel: currentStats.tokensByModel,
+                energyWh: currentStats.energyWh,
+                carbonG: currentStats.carbonG
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            Divider()
+
+            // Footer
+            HStack {
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gear")
+                        .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
 
                 Spacer()
 
-                Button(action: {
-                    NSApplication.shared.terminate(nil)
-                }) {
-                    HStack {
-                        Image(systemName: "power")
-                        Text("Quit")
-                    }
+                Button(action: { NSApplication.shared.terminate(nil) }) {
+                    Image(systemName: "power")
+                        .foregroundColor(.red.opacity(0.8))
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.red)
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .frame(width: 360, height: 480)
+        .frame(width: 420)
         .sheet(isPresented: $showingSettings) {
             SettingsView(energyCalculator: energyCalculator)
         }
@@ -131,7 +86,7 @@ struct MenuBarView: View {
 
     // MARK: - Computed Properties
 
-    private var currentStats: (tokens: Int, energyWh: Double, carbonG: Double) {
+    private var currentStats: UsageStats {
         switch selectedTimeRange {
         case .today:
             return dataStore.getTodayStats()
@@ -142,22 +97,4 @@ struct MenuBarView: View {
         }
     }
 
-    // MARK: - Helper Methods
-
-    private func timeAgo(from date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-
-        if interval < 60 {
-            return "just now"
-        } else if interval < 3600 {
-            let minutes = Int(interval / 60)
-            return "\(minutes)m ago"
-        } else if interval < 86400 {
-            let hours = Int(interval / 3600)
-            return "\(hours)h ago"
-        } else {
-            let days = Int(interval / 86400)
-            return "\(days)d ago"
-        }
-    }
 }

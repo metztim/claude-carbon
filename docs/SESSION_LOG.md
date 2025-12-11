@@ -413,3 +413,138 @@ Fixed multiple issues with the JSONL token tracking system. Directory monitoring
 - Files modified: 5
 - Bugs fixed: 3
 - New database table: 1 (jsonl_offsets)
+
+---
+
+## Session Log: 2025-12-10
+
+**Project**: claude-carbon
+**Type**: [feature]
+
+### Objectives
+- Add higher energy impact comparison levels for power users
+- Implement model-specific energy calculations (Opus/Sonnet/Haiku)
+- Add visual model breakdown in token usage display
+- Add methodology explanation section
+
+### Summary
+Enhanced the energy tracking to use model-specific J/token values (Opus: 2.0, Sonnet: 1.0, Haiku: 0.3) instead of assuming all tokens are Sonnet. Added a visual stacked bar showing token distribution by model with blue-themed colors. Added collapsible "How it works" methodology section. Extended energy comparison levels to handle higher usage (household electricity days, EV miles).
+
+### Files Changed
+- `ClaudeCarbon/Views/ComparisonView.swift` - Added higher energy levels (1-100+ kWh), fixed icon/text mismatch, extended comparisons to household daily use and EV miles
+- `ClaudeCarbon/Views/StatsView.swift` - Added `tokensByModel` parameter, created `ModelBreakdownBar` component with stacked bar and legend
+- `ClaudeCarbon/Views/MenuBarView.swift` - Removed Active Session section, added collapsible methodology explanation, moved Energy Impact inside time range section, updated to use `UsageStats` struct
+- `ClaudeCarbon/Services/DataStore.swift` - Added `UsageStats` struct, added `parseModelName()` helper, rewrote stats functions to GROUP BY model and calculate energy per-model
+- `ClaudeCarbon/App/ClaudeCarbonApp.swift` - Removed unused `historyMonitor` parameter from MenuBarView
+
+### Technical Notes
+- Model name parsing extracts "opus"/"sonnet"/"haiku" from full model IDs like `claude-opus-4-5-20250514`
+- Energy calculation now: `Σ (tokens_per_model × J/token_for_model × PUE) / 3600`
+- Discovered Claude Code uses Haiku internally for lightweight operations (file searches, fast subagents)
+- J/token values are inferred from pricing ratios, not measured (confidence: low for opus/haiku)
+- Larger models use more energy per token due to more parameters requiring more compute per forward pass
+
+### Energy Comparison Levels (Updated)
+| Range | Icon | Comparison |
+|-------|------|------------|
+| 0-1 Wh | lightbulb.fill | LED bulb seconds |
+| 1-10 Wh | iphone | Charging phone % |
+| 10-1000 Wh | laptopcomputer | Laptop mins/hours |
+| 1-30 kWh | house.fill | X% daily household use |
+| 30-100 kWh | house.fill | X days household electricity |
+| 100+ kWh | car.fill | Driving EV X miles |
+
+### Model Colors (Blue Theme)
+- Opus: Dark navy `(0.1, 0.2, 0.6)`
+- Sonnet: Medium blue `(0.2, 0.4, 0.9)`
+- Haiku: Light blue `(0.4, 0.7, 1.0)`
+
+### Future Plans & Unimplemented Phases
+
+#### GitHub "Learn More" Link
+**Status**: Not started
+**Notes**: User mentioned wanting a "read more" button linking to GitHub methodology explainer, but deferred for now. Would add to the "How it works" DisclosureGroup.
+
+### Next Actions
+- [ ] Commit changes to git
+- [ ] Consider per-message token tracking (currently per-session) for more accurate model attribution
+- [ ] Add GitHub link to methodology section when explainer doc is ready
+- [ ] Consider adding uncertainty ranges to energy estimates given low confidence on J/token values
+
+### Metrics
+- Files modified: 5
+- New UI components: 1 (ModelBreakdownBar)
+- New data struct: 1 (UsageStats)
+
+---
+
+## Session Log: 2025-12-11
+
+**Project**: claude-carbon
+**Type**: [feature] [bugfix] [refactor]
+
+### Objectives
+- Explore AI tools for UX design workflow
+- Redesign menu bar popover for horizontal layout
+- Fix data display issues
+
+### Summary
+Researched AI-assisted UX design tools (Gemini 3, v0.dev, Uizard) and created a self-contained brief for generating mockups. Redesigned the main MenuBarView to be wider and more horizontal, with a prominent hero equivalent display and compact stats row. Fixed critical bug where "Today" filter wasn't showing sessions that started yesterday but continued today. Added tooltip for model breakdown and simplified the settings panel.
+
+### Files Changed
+- `ClaudeCarbon/Views/MenuBarView.swift` - Redesigned to horizontal layout (420px wide), moved time picker to header, removed ScrollView
+- `ClaudeCarbon/Views/ComparisonView.swift` - Added HeroComparisonView (large hero display), CompactStatsRow, CompactStatItem components; fixed height for consistency
+- `ClaudeCarbon/Views/SettingsView.swift` - Simplified from 600px modal to compact 300x320 sheet with read-only assumptions display
+- `ClaudeCarbon/Services/DataStore.swift` - Fixed time filter bug: changed from `start_time` to `last_activity_time` for period queries
+
+### Technical Notes
+- **UX Design Workflow**: Best approach is Gemini 3 for visual mockups → Claude Code for implementation. Gemini can generate UI mockups from detailed prompts but may return text specifications instead of images; use Canvas feature for actual visuals.
+- **Time Filter Bug**: Sessions that started on a previous day but had activity today weren't showing in "Today" view because query filtered on `start_time >= startOfToday`. Changed to `last_activity_time >= startOfToday`.
+- **Layout Jumping Fix**: Added fixed height (92px) to HeroComparisonView and fixed icon frame (60x60) to prevent content jumping when switching between time periods.
+- **Tooltip Implementation**: Used native macOS `.help()` modifier on CompactStatItem for model breakdown tooltip.
+
+### UI Changes Summary
+**Before**: 360x480 vertical layout with ScrollView
+**After**: 420px wide horizontal layout, no scroll needed
+```
+┌────────────────────────────────────────────────┐
+│ 🍃 Claude Carbon     [Today|Week|All Time]     │
+├────────────────────────────────────────────────┤
+│  💻  Laptop for 6.4 hrs                        │
+│      Energy equivalent                         │
+├────────────────────────────────────────────────┤
+│  🔢 1.9M     ⚡ 636 Wh     🍃 244g             │
+│  tokens      energy        CO₂                 │
+├────────────────────────────────────────────────┤
+│  ⚙️                                    🔴      │
+└────────────────────────────────────────────────┘
+```
+
+### Future Plans & Unimplemented Phases
+
+#### Phase: Methodology Research
+**Status**: Not started
+**Planned Steps**:
+1. Deep dive into energy calculation assumptions (J/token values)
+2. Validate against published AI energy research
+3. Add uncertainty ranges to estimates
+4. Consider regional carbon intensity options
+
+#### Phase: Additional UX Improvements
+**Status**: Partially discussed
+**Planned Ideas**:
+- Multiple equivalents shown simultaneously (phone, car, tree icons in a row)
+- Gauge/meter visualization approach
+- More intuitive onboarding for first-time users
+
+### Next Actions
+- [ ] Validate methodology assumptions against latest AI energy research
+- [ ] Consider adding "How it works" link to external documentation
+- [ ] Add regional carbon intensity selector (US vs global vs specific regions)
+- [ ] Test tooltip behavior on different macOS versions
+- [ ] Consider adding app icon to menu bar (currently just leaf)
+
+### Metrics
+- Files modified: 4
+- New UI components: 3 (HeroComparisonView, CompactStatsRow, CompactStatItem)
+- Bugs fixed: 2 (time filter, layout jumping)

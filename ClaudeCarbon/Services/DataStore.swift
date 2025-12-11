@@ -5,6 +5,14 @@ import Combine
 /// SQLite destructor type that tells SQLite to copy the string
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+/// Statistics with per-model breakdown
+struct UsageStats {
+    let tokens: Int
+    let energyWh: Double
+    let carbonG: Double
+    let tokensByModel: [String: Int] // "opus" -> 1000, "sonnet" -> 500, etc.
+}
+
 /// SQLite-backed data store for Claude Carbon sessions and statistics
 class DataStore: ObservableObject {
     @Published var todayTokens: Int = 0
@@ -34,6 +42,26 @@ class DataStore: ObservableObject {
 
     deinit {
         sqlite3_close(db)
+    }
+
+    // MARK: - Model Parsing
+
+    /// Extract simplified model name from full model ID
+    /// e.g., "claude-opus-4-5-20250514" -> "opus"
+    ///       "claude-sonnet-4-20250514" -> "sonnet"
+    ///       "claude-3-5-haiku-20241022" -> "haiku"
+    static func parseModelName(_ fullModelId: String?) -> String {
+        guard let modelId = fullModelId?.lowercased() else { return "sonnet" }
+
+        if modelId.contains("opus") {
+            return "opus"
+        } else if modelId.contains("haiku") {
+            return "haiku"
+        } else if modelId.contains("sonnet") {
+            return "sonnet"
+        } else {
+            return "sonnet" // default fallback
+        }
     }
 
     // MARK: - Database Setup
@@ -358,85 +386,97 @@ class DataStore: ObservableObject {
 
     // MARK: - Statistics
 
-    func getTodayStats() -> (tokens: Int, energyWh: Double, carbonG: Double) {
+    func getTodayStats() -> UsageStats {
         return getStatsForPeriod(days: 0)
     }
 
-    func getWeekStats() -> (tokens: Int, energyWh: Double, carbonG: Double) {
+    func getWeekStats() -> UsageStats {
         return getStatsForPeriod(days: 7)
     }
 
-    func getAllTimeStats() -> (tokens: Int, energyWh: Double, carbonG: Double) {
-        let sql = """
-            SELECT
-                COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens,
-                COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens_for_energy
-            FROM sessions
-            """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            return (0, 0.0, 0.0)
-        }
-
-        var tokens = 0
-        if sqlite3_step(statement) == SQLITE_ROW {
-            tokens = Int(sqlite3_column_int(statement, 0))
-        }
-
-        sqlite3_finalize(statement)
-
-        // Calculate energy using methodology (simplified - you'll want to use actual Methodology)
-        let methodology = Methodology.default
-        let avgJoulesPerToken = methodology.joulesPerToken["sonnet"] ?? 0.42
-        let energyJ = Double(tokens) * avgJoulesPerToken * methodology.pue
-        let energyWh = energyJ / 3600.0
-        let carbonG = energyWh * methodology.carbonIntensity / 1000.0
-
-        return (tokens, energyWh, carbonG)
+    func getAllTimeStats() -> UsageStats {
+        return getStatsForPeriod(days: nil)
     }
 
-    private func getStatsForPeriod(days: Int) -> (tokens: Int, energyWh: Double, carbonG: Double) {
+    private func getStatsForPeriod(days: Int?) -> UsageStats {
         let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
-        let startDate: Date
 
-        if days == 0 {
-            startDate = startOfToday
+        // Build SQL - group by model
+        // Use last_activity_time so sessions that continue across days are included
+        let sql: String
+        let hasDateFilter: Bool
+
+        if let days = days {
+            hasDateFilter = true
+            sql = """
+                SELECT
+                    actual_model,
+                    COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens
+                FROM sessions
+                WHERE last_activity_time >= ?
+                GROUP BY actual_model
+                """
         } else {
-            startDate = calendar.date(byAdding: .day, value: -days, to: startOfToday) ?? startOfToday
+            hasDateFilter = false
+            sql = """
+                SELECT
+                    actual_model,
+                    COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens
+                FROM sessions
+                GROUP BY actual_model
+                """
         }
-
-        let sql = """
-            SELECT
-                COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens
-            FROM sessions
-            WHERE start_time >= ?
-            """
 
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            return (0, 0.0, 0.0)
+            return UsageStats(tokens: 0, energyWh: 0.0, carbonG: 0.0, tokensByModel: [:])
         }
 
-        sqlite3_bind_double(statement, 1, startDate.timeIntervalSince1970)
+        if hasDateFilter {
+            let startDate: Date
+            if days == 0 {
+                startDate = startOfToday
+            } else {
+                startDate = calendar.date(byAdding: .day, value: -(days ?? 0), to: startOfToday) ?? startOfToday
+            }
+            sqlite3_bind_double(statement, 1, startDate.timeIntervalSince1970)
+        }
 
-        var tokens = 0
-        if sqlite3_step(statement) == SQLITE_ROW {
-            tokens = Int(sqlite3_column_int(statement, 0))
+        // Collect tokens per model
+        var tokensByModel: [String: Int] = [:]
+        var totalTokens = 0
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let actualModel: String?
+            if let cString = sqlite3_column_text(statement, 0) {
+                actualModel = String(cString: cString)
+            } else {
+                actualModel = nil
+            }
+            let tokens = Int(sqlite3_column_int(statement, 1))
+
+            let modelName = DataStore.parseModelName(actualModel)
+            tokensByModel[modelName, default: 0] += tokens
+            totalTokens += tokens
         }
 
         sqlite3_finalize(statement)
 
-        // Calculate energy using methodology
+        // Calculate energy per model using model-specific J/token
         let methodology = Methodology.default
-        let avgJoulesPerToken = methodology.joulesPerToken["sonnet"] ?? 0.42
-        let energyJ = Double(tokens) * avgJoulesPerToken * methodology.pue
-        let energyWh = energyJ / 3600.0
-        let carbonG = energyWh * methodology.carbonIntensity / 1000.0
+        var totalEnergyWh = 0.0
 
-        return (tokens, energyWh, carbonG)
+        for (model, tokens) in tokensByModel {
+            let joulesPerToken = methodology.joulesPerToken[model] ?? methodology.joulesPerToken["sonnet"] ?? 1.0
+            let energyJ = Double(tokens) * joulesPerToken * methodology.pue
+            totalEnergyWh += energyJ / 3600.0
+        }
+
+        let carbonG = totalEnergyWh * methodology.carbonIntensity / 1000.0
+
+        return UsageStats(tokens: totalTokens, energyWh: totalEnergyWh, carbonG: carbonG, tokensByModel: tokensByModel)
     }
 
     private func refreshTodayStats() {

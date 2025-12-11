@@ -5,25 +5,33 @@ struct StatsView: View {
     let tokens: Int
     let energyWh: Double
     let carbonG: Double
+    let tokensByModel: [String: Int]
 
     var body: some View {
         VStack(spacing: 16) {
             // Tokens Row
-            HStack {
-                Image(systemName: "number.circle.fill")
-                    .foregroundColor(.blue)
-                    .font(.title2)
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "number.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.title2)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Tokens")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(formattedTokens)
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Tokens")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(formattedTokens)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    }
+
+                    Spacer()
                 }
 
-                Spacer()
+                // Model breakdown bar
+                if !tokensByModel.isEmpty && tokens > 0 {
+                    ModelBreakdownBar(tokensByModel: tokensByModel, totalTokens: tokens)
+                }
             }
 
             Divider()
@@ -172,6 +180,75 @@ struct CarbonProgressBar: View {
             return .orange
         default:
             return .red
+        }
+    }
+}
+
+// MARK: - Model Breakdown Bar
+
+struct ModelBreakdownBar: View {
+    let tokensByModel: [String: Int]
+    let totalTokens: Int
+
+    // Model colors - blue variants to match token section theme
+    private let modelColors: [String: Color] = [
+        "opus": Color(red: 0.1, green: 0.2, blue: 0.6),    // Dark navy
+        "sonnet": Color(red: 0.2, green: 0.4, blue: 0.9),  // Medium blue
+        "haiku": Color(red: 0.4, green: 0.7, blue: 1.0)    // Light blue
+    ]
+
+    // Consistent ordering
+    private let modelOrder = ["opus", "sonnet", "haiku"]
+
+    var body: some View {
+        VStack(spacing: 4) {
+            // Stacked bar
+            GeometryReader { geometry in
+                HStack(spacing: 1) {
+                    ForEach(sortedModels, id: \.0) { model, tokens in
+                        let width = geometry.size.width * CGFloat(tokens) / CGFloat(totalTokens)
+                        Rectangle()
+                            .fill(modelColors[model] ?? .gray)
+                            .frame(width: max(width, tokens > 0 ? 2 : 0))
+                    }
+                }
+            }
+            .frame(height: 8)
+            .cornerRadius(4)
+
+            // Legend
+            HStack(spacing: 12) {
+                ForEach(sortedModels, id: \.0) { model, tokens in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(modelColors[model] ?? .gray)
+                            .frame(width: 8, height: 8)
+                        Text("\(model.capitalized): \(formatTokens(tokens))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private var sortedModels: [(String, Int)] {
+        modelOrder.compactMap { model in
+            if let tokens = tokensByModel[model], tokens > 0 {
+                return (model, tokens)
+            }
+            return nil
+        }
+    }
+
+    private func formatTokens(_ tokens: Int) -> String {
+        if tokens >= 1_000_000 {
+            return String(format: "%.1fM", Double(tokens) / 1_000_000.0)
+        } else if tokens >= 1_000 {
+            return String(format: "%.0fk", Double(tokens) / 1_000.0)
+        } else {
+            return "\(tokens)"
         }
     }
 }
