@@ -15,13 +15,13 @@ struct HeroComparisonView: View {
                 .frame(width: 60, height: 60)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(comparisonText)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
                 Text("Energy equivalent")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                Text(comparisonText)
+                    .font(.title2)
+                    .fontWeight(.semibold)
             }
 
             Spacer()
