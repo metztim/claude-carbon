@@ -46,6 +46,14 @@ See [GitHub Issues](https://github.com/metztim/claude-carbon/issues) labeled `en
 
 To propose a new idea: Create an issue with `[Idea]` prefix.
 
+### Creating Issues from Mobile
+
+To create a GitHub issue from Claude Code mobile:
+1. Create a file in `issues/` folder (e.g., `issues/my-feature.md`)
+2. Start with a heading for the title: `# [Feature] My idea`
+3. Optionally add labels: `Labels: enhancement, bug`
+4. Commit and push - GitHub Action creates the issue automatically
+
 ## Data Flow
 
 ```

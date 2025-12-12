@@ -1,0 +1,60 @@
+name: Create Issues from Markdown Files
+on:
+  push:
+    paths:
+      - 'issues/*.md'
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create issues and cleanup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          files=(issues/*.md)
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No markdown files to process"
+            exit 0
+          fi
+
+          for file in "${files[@]}"; do
+            echo "Processing: $file"
+
+            # Extract title from first heading (# Title or ## Title)
+            title=$(grep -m1 '^#' "$file" | sed 's/^#* *//')
+
+            if [ -z "$title" ]; then
+              title=$(basename "$file" .md)
+            fi
+
+            # Check for label in file (format: Labels: enhancement, bug)
+            labels=$(grep -i '^labels:' "$file" | sed 's/^[Ll]abels: *//' | tr -d ' ')
+
+            if [ -n "$labels" ]; then
+              gh issue create --title "$title" --body-file "$file" --label "$labels" || \
+              gh issue create --title "$title" --body-file "$file"
+            else
+              gh issue create --title "$title" --body-file "$file"
+            fi
+
+            rm "$file"
+          done
+
+          # Commit the deletion of processed files
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: processed issue files into GitHub issues"
+            git push
+          fi
