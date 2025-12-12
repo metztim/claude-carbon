@@ -686,3 +686,49 @@ None planned for this bugfix session.
 ### Metrics
 - Files modified: 2
 - Lines changed: ~15
+
+---
+
+## Session Log: 2025-12-12
+
+**Project**: claude-carbon
+**Type**: [docs] [config] [feature]
+
+### Objectives
+- Migrate all local docs/TODOs to GitHub issues
+- Enable creating GitHub issues from Claude Code mobile
+
+### Summary
+Migrated 6 documentation files to GitHub issues, removing local duplicates. Created a GitHub Action workflow that automatically creates issues from markdown files in `issues/` folder, enabling issue creation from Claude Code mobile. Added a global `/add-mobile-issues` command to set this up in other projects.
+
+### Files Changed
+- `Scripts/create-issues.sh` - Created (from mobile branch), then removed after use
+- `docs/INSTALLATION_TRACKING.md` - Deleted (migrated to issue #7)
+- `docs/CLAUDE_CODE_DETECTION.md` - Deleted (migrated to issue #8)
+- `docs/APP_STORE_DISTRIBUTION.md` - Deleted (migrated to issue #9)
+- `docs/FUTURE_IDEAS.md` - Deleted (migrated to issues #1, #3)
+- `docs/DYNAMIC_ICON_IDEAS.md` - Deleted (migrated to issue #4, updated with full content)
+- `docs/ENERGY_METHODOLOGY_REVIEW.md` - Deleted (migrated to new issue #10)
+- `.github/workflows/create-issues.yml` - NEW: GitHub Action for auto-creating issues
+- `issues/.gitkeep` - NEW: Placeholder for issues folder
+- `CLAUDE.md` - Updated with directive instructions for issue creation
+- `~/.claude/commands/add-mobile-issues.md` - NEW: Global command to set up workflow in any project
+
+### Technical Notes
+- GitHub issues now contain full doc content (using `--body-file` flag)
+- Issue #4 was updated to include full DYNAMIC_ICON_IDEAS.md content (previously just referenced the doc)
+- CLAUDE.md uses directive language ("When asked to create a GitHub issue: Create a markdown file...") to ensure Claude Code on mobile uses the file-based approach instead of trying `gh` CLI
+- The GitHub Action extracts title from first heading, optional labels from `Labels:` line
+
+### Future Plans & Unimplemented Phases
+None - all planned work completed.
+
+### Next Actions
+- [ ] Test mobile issue creation from Claude Code in Claude app
+- [ ] Try `/add-mobile-issues` command in another project to verify it works
+
+### Metrics
+- Files deleted: 7 (docs migrated to issues)
+- Files created: 3 (workflow, .gitkeep, global command)
+- GitHub issues created: 1 (#10 - Energy Methodology Review)
+- GitHub issues updated: 1 (#4 - full content added)
