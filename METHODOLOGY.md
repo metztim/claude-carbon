@@ -38,15 +38,15 @@ Estimated tokens = Character count / 4
 **Method**: Estimate output tokens as a multiple of input tokens
 
 ```
-Estimated output tokens = Input tokens × 2.5
+Estimated output tokens = Input tokens × 4.0
 ```
 
 **Rationale**:
 - Claude Code typically generates longer responses than prompts (code, explanations, examples)
-- Observed Claude Code sessions show 2-3× more output than input on average
+- Observed Claude Code sessions show 2-4× more output than input on average
 - Output generation is computationally more expensive than input processing (not reflected in token multiplier, but noted for methodology transparency)
 
-**Configuration**: `outputMultiplier = 2.5` (see `Methodology.json`)
+**Configuration**: `outputMultiplier = 4.0` (see `Methodology.json`)
 
 ### Limitations
 
@@ -136,11 +136,11 @@ Energy (Joules) = Total tokens × J/token × PUE
 Energy (Wh) = Energy (Joules) / 3600
 ```
 
-**Example** (100-token prompt, Sonnet, 2.5× output multiplier):
+**Example** (100-token prompt, Sonnet, 4.0× output multiplier):
 ```
-Total tokens = 100 + (100 × 2.5) = 350 tokens
-Energy (J) = 350 × 1.0 × 1.2 = 420 J
-Energy (Wh) = 420 / 3600 = 0.117 Wh
+Total tokens = 100 + (100 × 4.0) = 500 tokens
+Energy (J) = 500 × 1.0 × 1.2 = 600 J
+Energy (Wh) = 600 / 3600 = 0.167 Wh
 ```
 
 ### Carbon Emissions (gCO2e)
@@ -151,7 +151,7 @@ Carbon (g) = Energy (Wh) × Carbon intensity (gCO2e/kWh) / 1000
 
 **Example** (continuing from above):
 ```
-Carbon = 0.117 × 384 / 1000 = 0.045 gCO2e
+Carbon = 0.167 × 384 / 1000 = 0.064 gCO2e
 ```
 
 ### Combined Formula
@@ -194,7 +194,7 @@ We believe in radical transparency about what we don't know.
    - Haiku and Opus values are inferred from pricing (Low confidence)
    - Sonnet value is research-based but not Claude-specific (Medium confidence)
 3. **No caching accounting**: Doesn't track prompt caching, which reduces energy for repeated context
-4. **Output multiplier**: 2.5× is an average—your usage may vary (1.5-4× observed)
+4. **Output multiplier**: 4.0× is an average—your usage may vary (1.5-4× observed)
 5. **Infrastructure assumptions**: PUE and carbon intensity are industry averages, not Anthropic-specific
 6. **No lifecycle emissions**: Only operational energy, not embodied carbon in hardware
 7. **No training costs**: Only inference, not the energy to train models
