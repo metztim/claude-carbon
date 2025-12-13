@@ -7,27 +7,25 @@ struct ChartsView: View {
     let timeRange: MenuBarView.TimeRange
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                if timeRange == .today ? hourlyUsage.isEmpty : dailyUsage.isEmpty {
-                    emptyState
-                } else {
-                    // Token usage chart
-                    TokensChartSection(
-                        hourlyData: timeRange == .today ? hourlyUsage : nil,
-                        dailyData: timeRange != .today ? dailyUsage : nil,
-                        timeRange: timeRange
-                    )
+        VStack(spacing: 16) {
+            if timeRange == .today ? hourlyUsage.isEmpty : dailyUsage.isEmpty {
+                emptyState
+            } else {
+                // Token usage chart
+                TokensChartSection(
+                    hourlyData: timeRange == .today ? hourlyUsage : nil,
+                    dailyData: timeRange != .today ? dailyUsage : nil,
+                    timeRange: timeRange
+                )
 
-                    Divider()
-                        .padding(.horizontal)
+                Divider()
+                    .padding(.horizontal)
 
-                    // Burn rate chart
-                    BurnRateSection(data: burnRateData, timeRange: timeRange)
-                }
+                // Burn rate chart
+                BurnRateSection(data: burnRateData, timeRange: timeRange)
             }
-            .padding(.vertical, 16)
         }
+        .padding(.vertical, 16)
     }
 
     // MARK: - Data
