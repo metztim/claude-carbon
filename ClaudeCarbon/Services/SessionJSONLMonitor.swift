@@ -64,8 +64,26 @@ class SessionJSONLMonitor: ObservableObject {
 
     func startMonitoring() {
         monitorQueue.async { [weak self] in
+            self?.cleanupOrphanedOffsets()
             self?.setupDirectoryMonitoring()
             self?.scanExistingProjects()
+        }
+    }
+
+    /// Clean up SQLite offset entries for files that no longer exist
+    private func cleanupOrphanedOffsets() {
+        let storedPaths = dataStore.getAllOffsetPaths()
+        var cleanedCount = 0
+
+        for path in storedPaths {
+            if !FileManager.default.fileExists(atPath: path) {
+                dataStore.deleteOffset(forFile: path)
+                cleanedCount += 1
+            }
+        }
+
+        if cleanedCount > 0 {
+            print("SessionJSONLMonitor: Cleaned up \(cleanedCount) orphaned offset entries")
         }
     }
 
@@ -163,7 +181,8 @@ class SessionJSONLMonitor: ObservableObject {
         }
 
         for file in files {
-            guard file.hasSuffix(".jsonl") else { continue }
+            // Skip agent JSONL files - they contain parent session's ID in content
+            guard file.hasSuffix(".jsonl") && !file.hasPrefix("agent-") else { continue }
 
             let filePath = (projectPath as NSString).appendingPathComponent(file)
 
@@ -206,6 +225,13 @@ class SessionJSONLMonitor: ObservableObject {
 
     private func readNewEntries(fromPath path: String) {
         guard let handle = FileHandle(forReadingAtPath: path) else {
+            // File no longer exists - clean up
+            if let monitor = monitoredFiles.removeValue(forKey: path) {
+                monitor.stop()
+                print("SessionJSONLMonitor: Cleaned up monitor for deleted file \(path)")
+            }
+            fileOffsets.removeValue(forKey: path)
+            dataStore.deleteOffset(forFile: path)
             return
         }
 
