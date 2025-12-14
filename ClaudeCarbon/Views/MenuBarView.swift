@@ -6,7 +6,7 @@ struct MenuBarView: View {
     let energyCalculator: EnergyCalculator
 
     @State private var selectedTimeRange: TimeRange = .today
-    @State private var showingSettings = false
+    @State private var selectedView: ViewMode = .stats
 
     enum TimeRange: String, CaseIterable {
         case today = "Today"
@@ -40,32 +40,42 @@ struct MenuBarView: View {
 
             Divider()
 
-            // Hero: Energy Impact Equivalent
-            HeroComparisonView(energyWh: currentStats.energyWh)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
+            // Content area - switches based on selected view
+            Group {
+                switch selectedView {
+                case .stats:
+                    VStack(spacing: 0) {
+                        // Hero: Energy Impact Equivalent
+                        HeroComparisonView(energyWh: currentStats.energyWh)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 20)
 
-            Divider()
+                        Divider()
 
-            // Compact stats row
-            CompactStatsRow(
-                tokens: currentStats.tokens,
-                tokensByModel: currentStats.tokensByModel,
-                energyWh: currentStats.energyWh,
-                carbonG: currentStats.carbonG
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+                        // Compact stats row
+                        CompactStatsRow(
+                            tokens: currentStats.tokens,
+                            tokensByModel: currentStats.tokensByModel,
+                            energyWh: currentStats.energyWh,
+                            carbonG: currentStats.carbonG
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
 
-            Divider()
+                case .charts:
+                    ChartsView(dataStore: dataStore, timeRange: selectedTimeRange)
 
-            // Footer
-            HStack {
-                Button(action: { showingSettings = true }) {
-                    Image(systemName: "gear")
-                        .foregroundColor(.secondary)
+                case .settings:
+                    EmbeddedSettingsView(energyCalculator: energyCalculator)
                 }
-                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Footer - view picker left, quit right
+            HStack {
+                ViewModePicker(selection: $selectedView)
 
                 Spacer()
 
@@ -76,12 +86,9 @@ struct MenuBarView: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
         }
         .frame(width: 420)
-        .sheet(isPresented: $showingSettings) {
-            SettingsView(energyCalculator: energyCalculator)
-        }
     }
 
     // MARK: - Computed Properties

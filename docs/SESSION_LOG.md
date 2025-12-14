@@ -732,3 +732,248 @@ None - all planned work completed.
 - Files created: 3 (workflow, .gitkeep, global command)
 - GitHub issues created: 1 (#10 - Energy Methodology Review)
 - GitHub issues updated: 1 (#4 - full content added)
+
+---
+
+## Session Log: 2025-12-13
+
+**Project**: claude-carbon
+**Type**: [feature]
+
+### Objectives
+- Add view toggle system to switch between Stats, Charts, and Settings views
+- Implement charts showing token usage and burn rate over time
+- Refactor Settings from modal overlay to embedded view
+
+### Summary
+Implemented a complete view toggle system for Claude Carbon with three switchable views (Stats, Charts, Settings) via a segmented control in the footer. Added Swift Charts integration showing token usage (bar chart) and burn rate (line chart) with proper x-axis labeling for Today (hourly), Week (daily), and All Time (manual 5-point labels). Fixed multiple issues with chart axis labels and data queries.
+
+### Files Changed
+- `ClaudeCarbon/Services/DataStore.swift` - Added `DailyUsage`, `HourlyUsage`, `BurnRatePoint` structs; added `getDailyUsage(days:)`, `getBurnRateByDay(days:)`, `getTodayHourlyUsage()` methods for time-series data
+- `ClaudeCarbon/Views/MenuBarView.swift` - Added `ViewMode` state, integrated `ViewModePicker` in footer, replaced sheet-based settings with embedded view switching
+- `ClaudeCarbon/Views/SettingsView.swift` - Added `EmbeddedSettingsView` struct for inline display (no modal dismiss)
+- `ClaudeCarbon/Views/ViewModePicker.swift` - **NEW** - Segmented control with icons for stats/charts/settings with visual separator before settings
+- `ClaudeCarbon/Views/ChartsView.swift` - **NEW** - Token usage chart (hourly for Today, daily for Week/All Time) and burn rate chart using Swift Charts
+- `ClaudeCarbon.xcodeproj/project.pbxproj` - Added new Swift files to Xcode project
+
+### Technical Notes
+- **Burn rate calculation**: `tokens per active hour = total tokens / (session duration in hours)` - measures intensity regardless of hours worked
+- **Today view**: Uses hourly data with `.chartXScale(domain: startOfDay...endOfDay)` to show full 24-hour range even with sparse data
+- **All Time x-axis labels**: Manual calculation of 5 evenly spaced dates (start, 3 middle, end) to guarantee edge labels - Swift Charts' automatic methods don't reliably include edges
+- **Data query pattern**: `days: 0` = today only, `days: 7` = last 7 days, `days: nil` = all time
+- **ViewModePicker placement**: Moved from center (below time picker) to footer left for cleaner UX
+
+### Future Plans & Unimplemented Phases
+None - core feature complete. Potential polish items:
+- Add tooltips/hover states on chart bars showing exact values
+- Consider weekly aggregation for All Time when data exceeds certain threshold
+
+### Next Actions
+- [ ] Test all three time ranges (Today, Week, All Time) with real data
+- [ ] Verify burn rate calculations make sense
+- [ ] Consider adding chart animations
+- [ ] Commit changes once verified working
+
+### Metrics
+- Files modified: 4
+- Files created: 2 (ViewModePicker.swift, ChartsView.swift)
+- New data structures: 3 (DailyUsage, HourlyUsage, BurnRatePoint)
+- New query methods: 3 (getDailyUsage, getBurnRateByDay, getTodayHourlyUsage)
+
+---
+
+## Session Log: 2025-12-13 (Session 2)
+
+**Project**: claude-carbon
+**Type**: [docs] [config]
+
+### Objectives
+- Strategic planning for open source launch
+- Prepare repo for public release
+- Create contributor documentation
+- Set up GitHub Issues as roadmap
+
+### Summary
+Conducted strategic planning discussion covering release timing, open source best practices, distribution options (Swift vs React, App Store vs GitHub), and gamification ideas. Decided to ship ASAP (1-2 days) with GitHub release first, App Store parallel. Updated README with accurate features, created CONTRIBUTING.md, rewrote CLAUDE.md for contributors.
+
+### Files Changed
+- `README.md` - Added "Why?" section explaining purpose, updated features to reflect actual token tracking (not estimates), simplified contributing section, updated limitations
+- `CONTRIBUTING.md` - **NEW**: Contributor guidelines including Claude Code workflow, areas for contribution, code style
+- `CLAUDE.md` - Rewritten with project structure, key files, data flow diagram, contributing guidance
+
+### Technical Notes
+
+1. **Release Strategy Decision**: Ship GitHub release first (immediate), App Store submission parallel. LinkedIn post as initial launch.
+
+2. **Open Source Model**: Standard GitHub fork+PR workflow. Contributors cannot push directly - they fork, change, submit PR for approval.
+
+3. **Swift vs React Decision**: Stay Swift. App Store handles user distribution. Vibe coders without Xcode can still contribute ideas/docs/methodology.
+
+4. **Gamification Direction**: Personal bests (tokens per active hour) as primary metric. Rewards efficient model choice without punishing usage.
+
+5. **App Store Considerations**: App reads `~/.claude/` files which requires sandbox disabled. May get questions during App Store review.
+
+### Future Plans & Unimplemented Phases
+
+#### Phase: GitHub Release Creation
+**Status**: Not started (requires Xcode)
+**Planned Steps**:
+1. Build release configuration in Xcode (Product → Archive)
+2. Distribute App → "Developer ID" (not App Store)
+3. Let Xcode notarize automatically
+4. Export notarized .app
+5. Create .zip and upload to GitHub Releases
+
+#### Phase: App Store Submission
+**Status**: Not started (requires Xcode)
+**Planned Steps**:
+1. Product → Archive
+2. Distribute App → "App Store Connect"
+3. Let Xcode manage signing, upload build
+4. Go to appstoreconnect.apple.com
+5. Create new app listing (name, description, keywords, screenshots)
+6. Select uploaded build, submit for review
+7. Wait 24-48 hours for review
+
+### Next Actions
+- [ ] Test app in Xcode - verify all recent features work
+- [ ] Create GitHub Release (Archive → Developer ID → Notarize → Upload)
+- [ ] Start App Store submission parallel
+- [ ] Write LinkedIn post for launch
+- [ ] Add LICENSE file (MIT mentioned in README but file may not exist)
+
+### Metrics
+- Files modified: 2 (README.md, CLAUDE.md)
+- Files created: 1 (CONTRIBUTING.md)
+- Commit: 540f7d0 "feat: prepare for open source launch"
+
+---
+
+## Session Log: 2025-12-14
+
+**Project**: claude-carbon
+**Type**: [bugfix]
+
+### Objectives
+- Investigate Xcode console warnings (layout recursion)
+- Address potential performance issues from monitoring hundreds of session files
+
+### Summary
+Fixed SwiftUI layout recursion warning caused by unnecessary GeometryReader usage and cornerRadius placement. Added startup and read-time cleanup for session file monitoring to prevent resource exhaustion and SQLite bloat from orphaned entries.
+
+### Files Changed
+- `ClaudeCarbon/Views/StatsView.swift` - Removed unnecessary GeometryReader from CarbonProgressBar, changed cornerRadius to clipShape in ModelBreakdownBar
+- `ClaudeCarbon/Services/DataStore.swift` - Added getAllOffsetPaths() and deleteOffset(forFile:) methods for cleanup
+- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Added startup cleanup of orphaned offsets, added read-time cleanup when files are deleted
+
+### Technical Notes
+- **Layout recursion cause**: CarbonProgressBar had GeometryReader wrapping content but never used the `geometry` parameter - just hardcoded 60px width
+- **ModelBreakdownBar fix**: `.cornerRadius()` after `.frame()` can cause layout recursion; `.clipShape(RoundedRectangle())` handles layout better
+- **Session monitoring issue**: No cleanup mechanism existed - every .jsonl file ever seen was monitored indefinitely, and SQLite offset entries accumulated forever
+- **Cleanup approach**: Startup cleanup checks all stored offset paths and removes entries for deleted files; read-time cleanup removes monitors and DB entries when file access fails
+
+### Future Plans & Unimplemented Phases
+None - all planned work was completed.
+
+### Next Actions
+- [ ] Build and run in Xcode to verify fixes
+- [ ] Monitor Xcode console for layout recursion warning disappearance
+- [ ] Verify cleanup logs appear on startup when orphaned files exist
+
+### Metrics
+- Files modified: 3
+- Lines added: ~50
+- Lines removed: ~5
+
+---
+
+## Session Log: 2024-12-14
+
+**Project**: claude-carbon
+**Type**: [docs] [config]
+
+### Objectives
+- Research open source license options for the project
+- Add MIT license to the repository
+- Document the licensing decision rationale
+
+### Summary
+Researched open source licensing options (MIT, Apache 2.0, GPL) via web search, discussing trade-offs between permissive and copyleft licenses. Chose MIT for maximum simplicity and adoption, with a Buddhist-informed rationale around generosity and non-attachment. Created LICENSE file and documented the decision in docs/LICENSING.md.
+
+### Files Changed
+- `LICENSE` - Created MIT license with Tim Metz copyright
+- `docs/LICENSING.md` - Created licensing decision documentation with rationale
+
+### Technical Notes
+- **License categories**: Permissive (MIT, Apache 2.0, BSD) vs Copyleft (GPL, LGPL, AGPL)
+- **MIT chosen because**: Simplest license, maximum adoption potential, aligns with project's public-good mission
+- **Key insight**: README.md already referenced MIT License with broken `[LICENSE](LICENSE)` link — now fixed
+- **Future flexibility**: Copyright holder can be updated to "Claude Carbon Contributors" if community grows
+
+### Future Plans & Unimplemented Phases
+None - all planned work was completed.
+
+### Next Actions
+- [ ] Commit the new LICENSE and LICENSING.md files
+- [ ] Consider GitHub Sponsors setup if pursuing open source sustainability
+- [ ] Update copyright holder if community contributors join
+
+### Metrics
+- Files created: 2
+- Files modified: 0
+
+---
+
+## Session Log: 2025-12-14
+
+**Project**: claude-carbon
+**Type**: [bugfix]
+
+### Objectives
+- Investigate and fix 30-day session duration bug (sessions showing Nov 10 → Dec 10 spans)
+- Root cause analysis of corrupted session data causing burn rate chart spikes
+
+### Summary
+Investigated impossible 30-day session durations in the database. Root cause identified: agent JSONL files (`agent-*.jsonl`) contain the parent session's ID in their content, not the agent's ID. When the app reads these files, tokens get attributed to old parent sessions, causing `lastActivityTime` to update while `startTime` remains from weeks ago. Fixed by filtering out agent files during JSONL scanning.
+
+### Files Changed
+- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Skip agent JSONL files (line 185), add orphaned offset cleanup, add file deletion handling
+
+### Technical Notes
+- **Root cause discovery**: File `agent-03f8b8cf.jsonl` contains `sessionId: 496cde3e-bb1d-4150-a926-f2adce764cf5` (different ID than filename)
+- **Bug flow**:
+  1. Parent session created (Nov 10)
+  2. Agent spawned, creates `agent-{short-id}.jsonl`
+  3. Agent file content has `sessionId = <parent-session-id>`
+  4. App reads agent file, extracts sessionId from content
+  5. Tokens attributed to parent session
+  6. `lastActivityTime` updates to current date → 30-day span
+- **Fix rationale**: Agent tokens are already counted in parent's main JSONL file, so skipping agent files loses no data
+- **Database note**: Database was empty (0 bytes) during investigation, likely reset earlier
+
+### Future Plans & Unimplemented Phases
+
+#### Today Burn Rate Chart Empty
+**Status**: Not started
+**Issue**: LineMark with single data point doesn't render (needs 2+ points)
+**Planned approach**: Either show a point mark instead of line for single-day data, or display a message like "Need 2+ days for trend"
+
+#### Week Chart Missing Today's Day Label (GitHub Issue #12)
+**Status**: Not started
+**Issue**: Week view shows only 6 day labels instead of 7 (today's label missing)
+**Documented in**: `issues/week-chart-missing-today-label.md`
+**Suspected cause**: Swift Charts axis label positioning clips last mark near domain boundary
+**Possible solutions**:
+- Increase end padding (try +2 days instead of +1)
+- Use `.chartXAxis { AxisMarks(preset: .aligned, values: weekDates) }`
+- Try `.chartPlotStyle` to add internal padding
+
+### Next Actions
+- [ ] Investigate why Today burn rate chart shows empty (LineMark single-point issue)
+- [ ] Fix week chart missing today's day label (issue #12)
+- [ ] Push recent commits to remote (branch is ahead by 3 commits)
+- [ ] Commit remaining uncommitted changes (DataStore, MenuBarView, SettingsView, StatsView, docs)
+
+### Metrics
+- Files modified: 1
+- Commits created: 1 (f0208e3)

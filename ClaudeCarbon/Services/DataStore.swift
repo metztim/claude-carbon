@@ -13,6 +13,29 @@ struct UsageStats {
     let tokensByModel: [String: Int] // "opus" -> 1000, "sonnet" -> 500, etc.
 }
 
+/// Daily usage data for charts
+struct DailyUsage {
+    let date: Date
+    let tokens: Int
+    let energyWh: Double
+    let activeSeconds: Int  // Sum of session durations for burn rate
+}
+
+/// Hourly usage data for "Today" chart
+struct HourlyUsage: Identifiable {
+    let id = UUID()
+    let hour: Int  // 0-23
+    let date: Date  // Full date with hour set
+    let tokens: Int
+    let energyWh: Double
+}
+
+/// Burn rate data point (tokens per active hour)
+struct BurnRatePoint {
+    let date: Date
+    let tokensPerActiveHour: Double
+}
+
 /// SQLite-backed data store for Claude Carbon sessions and statistics
 class DataStore: ObservableObject {
     @Published var todayTokens: Int = 0
@@ -384,6 +407,46 @@ class DataStore: ObservableObject {
         sqlite3_finalize(statement)
     }
 
+    /// Get all file paths stored in jsonl_offsets table
+    func getAllOffsetPaths() -> [String] {
+        let sql = "SELECT file_path FROM jsonl_offsets"
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+
+        var paths: [String] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let pathPtr = sqlite3_column_text(statement, 0) {
+                paths.append(String(cString: pathPtr))
+            }
+        }
+
+        sqlite3_finalize(statement)
+        return paths
+    }
+
+    /// Delete offset entry for a specific file
+    func deleteOffset(forFile path: String) {
+        let sql = "DELETE FROM jsonl_offsets WHERE file_path = ?"
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            print("Error preparing deleteOffset")
+            return
+        }
+
+        sqlite3_bind_text(statement, 1, path, -1, SQLITE_TRANSIENT)
+
+        if sqlite3_step(statement) != SQLITE_DONE {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("Error deleting offset: \(errorMessage)")
+        }
+
+        sqlite3_finalize(statement)
+    }
+
     // MARK: - Statistics
 
     func getTodayStats() -> UsageStats {
@@ -486,5 +549,202 @@ class DataStore: ObservableObject {
             self.todayEnergyWh = stats.energyWh
             self.todayCarbonG = stats.carbonG
         }
+    }
+
+    // MARK: - Time Series Data for Charts
+
+    /// Get daily usage data for charting
+    /// - Parameter days: Number of days to fetch (nil for all time)
+    /// - Returns: Array of DailyUsage sorted by date ascending
+    func getDailyUsage(days: Int?) -> [DailyUsage] {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+
+        // Query to aggregate by day
+        let sql: String
+        let startDate: Date?
+
+        if let days = days {
+            // days == 0 means today only, days == 7 means last 7 days
+            if days == 0 {
+                startDate = startOfToday
+            } else {
+                startDate = calendar.date(byAdding: .day, value: -days, to: startOfToday)
+            }
+            sql = """
+                SELECT
+                    date(last_activity_time, 'unixepoch', 'localtime') as day,
+                    actual_model,
+                    COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens,
+                    COALESCE(SUM(last_activity_time - start_time), 0) as total_seconds
+                FROM sessions
+                WHERE last_activity_time >= ?
+                GROUP BY day, actual_model
+                ORDER BY day ASC
+                """
+        } else {
+            // nil means all time - no date filter
+            startDate = nil
+            sql = """
+                SELECT
+                    date(last_activity_time, 'unixepoch', 'localtime') as day,
+                    actual_model,
+                    COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens,
+                    COALESCE(SUM(last_activity_time - start_time), 0) as total_seconds
+                FROM sessions
+                GROUP BY day, actual_model
+                ORDER BY day ASC
+                """
+        }
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+
+        if let startDate = startDate {
+            sqlite3_bind_double(statement, 1, startDate.timeIntervalSince1970)
+        }
+
+        // Collect data grouped by day, then aggregate across models
+        var dayData: [String: (tokens: Int, energyWh: Double, activeSeconds: Int)] = [:]
+        let methodology = Methodology.default
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let dayPtr = sqlite3_column_text(statement, 0) else { continue }
+            let dayString = String(cString: dayPtr)
+
+            let actualModel: String?
+            if let cString = sqlite3_column_text(statement, 1) {
+                actualModel = String(cString: cString)
+            } else {
+                actualModel = nil
+            }
+
+            let tokens = Int(sqlite3_column_int(statement, 2))
+            let seconds = Int(sqlite3_column_int(statement, 3))
+
+            // Calculate energy for this model's tokens
+            let modelName = DataStore.parseModelName(actualModel)
+            let joulesPerToken = methodology.joulesPerToken[modelName] ?? methodology.joulesPerToken["sonnet"] ?? 1.0
+            let energyJ = Double(tokens) * joulesPerToken * methodology.pue
+            let energyWh = energyJ / 3600.0
+
+            // Aggregate into day
+            var existing = dayData[dayString] ?? (tokens: 0, energyWh: 0.0, activeSeconds: 0)
+            existing.tokens += tokens
+            existing.energyWh += energyWh
+            existing.activeSeconds += seconds
+            dayData[dayString] = existing
+        }
+
+        sqlite3_finalize(statement)
+
+        // Convert to DailyUsage array
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        return dayData.compactMap { (dayString, data) -> DailyUsage? in
+            guard let date = dateFormatter.date(from: dayString) else { return nil }
+            return DailyUsage(
+                date: date,
+                tokens: data.tokens,
+                energyWh: data.energyWh,
+                activeSeconds: data.activeSeconds
+            )
+        }.sorted { $0.date < $1.date }
+    }
+
+    /// Get burn rate (tokens per active hour) by day
+    /// - Parameter days: Number of days to fetch (nil for all time)
+    /// - Returns: Array of BurnRatePoint sorted by date ascending
+    func getBurnRateByDay(days: Int?) -> [BurnRatePoint] {
+        let dailyUsage = getDailyUsage(days: days)
+
+        return dailyUsage.compactMap { usage -> BurnRatePoint? in
+            // Filter out days with very short sessions (< 60 seconds total)
+            guard usage.activeSeconds >= 60 else { return nil }
+
+            let activeHours = Double(usage.activeSeconds) / 3600.0
+            let tokensPerHour = Double(usage.tokens) / activeHours
+
+            return BurnRatePoint(
+                date: usage.date,
+                tokensPerActiveHour: tokensPerHour
+            )
+        }
+    }
+
+    /// Get hourly usage for today (for hourly breakdown chart)
+    /// - Returns: Array of HourlyUsage for each hour of today (0-23), sorted by hour
+    func getTodayHourlyUsage() -> [HourlyUsage] {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+
+        // Query to aggregate by hour for today
+        let sql = """
+            SELECT
+                strftime('%H', last_activity_time, 'unixepoch', 'localtime') as hour,
+                actual_model,
+                COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens
+            FROM sessions
+            WHERE last_activity_time >= ?
+            GROUP BY hour, actual_model
+            ORDER BY hour ASC
+            """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+
+        sqlite3_bind_double(statement, 1, startOfToday.timeIntervalSince1970)
+
+        // Collect data grouped by hour
+        var hourData: [Int: (tokens: Int, energyWh: Double)] = [:]
+        let methodology = Methodology.default
+
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let hourPtr = sqlite3_column_text(statement, 0) else { continue }
+            let hourString = String(cString: hourPtr)
+            guard let hour = Int(hourString) else { continue }
+
+            let actualModel: String?
+            if let cString = sqlite3_column_text(statement, 1) {
+                actualModel = String(cString: cString)
+            } else {
+                actualModel = nil
+            }
+
+            let tokens = Int(sqlite3_column_int(statement, 2))
+
+            // Calculate energy for this model's tokens
+            let modelName = DataStore.parseModelName(actualModel)
+            let joulesPerToken = methodology.joulesPerToken[modelName] ?? methodology.joulesPerToken["sonnet"] ?? 1.0
+            let energyJ = Double(tokens) * joulesPerToken * methodology.pue
+            let energyWh = energyJ / 3600.0
+
+            // Aggregate into hour
+            var existing = hourData[hour] ?? (tokens: 0, energyWh: 0.0)
+            existing.tokens += tokens
+            existing.energyWh += energyWh
+            hourData[hour] = existing
+        }
+
+        sqlite3_finalize(statement)
+
+        // Convert to HourlyUsage array - include all hours with data
+        return hourData.map { (hour, data) -> HourlyUsage in
+            // Create a date for this hour
+            let hourDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: startOfToday) ?? startOfToday
+            return HourlyUsage(
+                hour: hour,
+                date: hourDate,
+                tokens: data.tokens,
+                energyWh: data.energyWh
+            )
+        }.sorted { $0.hour < $1.hour }
     }
 }

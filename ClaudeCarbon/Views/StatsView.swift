@@ -147,20 +147,18 @@ struct CarbonProgressBar: View {
     let grams: Double
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                // Background
-                Rectangle()
-                    .fill(Color.secondary.opacity(0.2))
-                    .frame(width: 60, height: 6)
-                    .cornerRadius(3)
+        ZStack(alignment: .leading) {
+            // Background
+            Rectangle()
+                .fill(Color.secondary.opacity(0.2))
+                .frame(width: 60, height: 6)
+                .cornerRadius(3)
 
-                // Progress
-                Rectangle()
-                    .fill(progressColor)
-                    .frame(width: min(60, progress * 60), height: 6)
-                    .cornerRadius(3)
-            }
+            // Progress
+            Rectangle()
+                .fill(progressColor)
+                .frame(width: min(60, progress * 60), height: 6)
+                .cornerRadius(3)
         }
         .frame(width: 60, height: 6)
     }
@@ -214,7 +212,7 @@ struct ModelBreakdownBar: View {
                 }
             }
             .frame(height: 8)
-            .cornerRadius(4)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
 
             // Legend
             HStack(spacing: 12) {

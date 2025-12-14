@@ -27,6 +27,8 @@
 		A10000000000000000000012 /* SessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* SessionCoordinator.swift */; };
 		A10000000000000000000014 /* ActivityIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* ActivityIndicator.swift */; };
 		A10000000000000000000015 /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* MenuBarIconView.swift */; };
+		A10000000000000000000016 /* ViewModePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* ViewModePicker.swift */; };
+		A10000000000000000000017 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* ChartsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +52,8 @@
 		A20000000000000000000012 /* SessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoordinator.swift; sourceTree = "<group>"; };
 		A20000000000000000000014 /* ActivityIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityIndicator.swift; sourceTree = "<group>"; };
 		A20000000000000000000015 /* MenuBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconView.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* ViewModePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModePicker.swift; sourceTree = "<group>"; };
+		A20000000000000000000017 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		A30000000000000000000001 /* ClaudeCarbon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeCarbon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -130,6 +134,8 @@
 			children = (
 				A2000000000000000000000B /* MenuBarView.swift */,
 				A20000000000000000000015 /* MenuBarIconView.swift */,
+				A20000000000000000000016 /* ViewModePicker.swift */,
+				A20000000000000000000017 /* ChartsView.swift */,
 				A2000000000000000000000C /* SessionRow.swift */,
 				A2000000000000000000000D /* StatsView.swift */,
 				A2000000000000000000000E /* ComparisonView.swift */,
@@ -235,6 +241,8 @@
 				A10000000000000000000012 /* SessionCoordinator.swift in Sources */,
 				A10000000000000000000014 /* ActivityIndicator.swift in Sources */,
 				A10000000000000000000015 /* MenuBarIconView.swift in Sources */,
+				A10000000000000000000016 /* ViewModePicker.swift in Sources */,
+				A10000000000000000000017 /* ChartsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
