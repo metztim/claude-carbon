@@ -46,7 +46,10 @@ struct MenuBarView: View {
                 case .stats:
                     VStack(spacing: 0) {
                         // Hero: Energy Impact Equivalent
-                        HeroComparisonView(energyWh: currentStats.energyWh)
+                        HeroComparisonView(
+                            energyWh: currentStats.energyWh,
+                            startDate: selectedTimeRange == .allTime ? allTimeStartDate : nil
+                        )
                             .padding(.horizontal, 16)
                             .padding(.vertical, 20)
 
@@ -102,6 +105,10 @@ struct MenuBarView: View {
         case .allTime:
             return dataStore.getAllTimeStats()
         }
+    }
+
+    private var allTimeStartDate: Date? {
+        dataStore.getDailyUsage(days: nil).first?.date
     }
 
 }

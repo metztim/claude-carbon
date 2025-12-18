@@ -5,6 +5,7 @@ import SwiftUI
 /// Large hero display showing energy usage equivalent
 struct HeroComparisonView: View {
     let energyWh: Double
+    var startDate: Date? = nil  // Optional: shows "since [date]" footnote when provided
 
     var body: some View {
         HStack(spacing: 16) {
@@ -22,12 +23,18 @@ struct HeroComparisonView: View {
                 Text(comparisonText)
                     .font(.title2)
                     .fontWeight(.semibold)
+
+                if let startDate = startDate {
+                    Text("since \(startDate, format: .dateTime.month(.abbreviated).day().year())")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
             }
 
             Spacer()
         }
         .padding(16)
-        .frame(height: 92) // Fixed height for consistency across views
+        .frame(minHeight: 92) // Min height for consistency, allows growth for footnote
         .background(Color.green.opacity(0.08))
         .cornerRadius(12)
     }

@@ -22,7 +22,12 @@ struct ChartsView: View {
                     .padding(.horizontal)
 
                 // Burn rate chart
-                BurnRateSection(data: burnRateData, timeRange: timeRange)
+                BurnRateSection(
+                    data: burnRateData,
+                    timeRange: timeRange,
+                    todayUsage: timeRange == .today ? dailyUsage.first : nil,
+                    allTimeStartDate: timeRange == .allTime ? dailyUsage.first?.date : nil
+                )
             }
         }
         .padding(.vertical, 16)
@@ -239,6 +244,8 @@ private struct TokensChartSection: View {
 private struct BurnRateSection: View {
     let data: [BurnRatePoint]
     let timeRange: MenuBarView.TimeRange
+    let todayUsage: DailyUsage?  // For showing today's burn rate as single stat
+    let allTimeStartDate: Date?  // For showing "since [date]" footnote
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -255,8 +262,23 @@ private struct BurnRateSection: View {
             }
             .padding(.horizontal, 16)
 
-            if data.isEmpty {
-                Text("Not enough session data")
+            if timeRange == .today, let usage = todayUsage, usage.activeSeconds >= 60 {
+                // Today: show single stat instead of chart
+                let activeHours = Double(usage.activeSeconds) / 3600.0
+                let tokensPerHour = Double(usage.tokens) / activeHours
+
+                VStack(spacing: 4) {
+                    Text(formatRate(tokensPerHour))
+                        .font(.system(size: 28, weight: .medium, design: .rounded))
+                        .foregroundColor(.orange)
+                    Text("tokens per active hour")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else if data.isEmpty {
+                Text(timeRange == .today ? "Not enough active time yet" : "Not enough session data")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -330,10 +352,22 @@ private struct BurnRateSection: View {
                 .padding(.horizontal, 16)
             }
 
-            Text("Tokens per active hour")
-                .font(.caption2)
-                .foregroundColor(.secondary.opacity(0.7))
+            // Footer - hide "Tokens per active hour" when today's single stat is shown (already has that text)
+            let showingSingleStat = timeRange == .today && (todayUsage?.activeSeconds ?? 0) >= 60
+            if !showingSingleStat {
+                HStack {
+                    Text("Tokens per active hour")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                    Spacer()
+                    if timeRange == .allTime, let startDate = allTimeStartDate {
+                        Text("since \(startDate, format: .dateTime.month(.abbreviated).day().year())")
+                            .font(.caption2)
+                            .foregroundColor(.secondary.opacity(0.7))
+                    }
+                }
                 .padding(.horizontal, 16)
+            }
         }
     }
 
