@@ -2,201 +2,6 @@
 
 ---
 
-## Session Log: 2025-12-10
-
-**Project**: ai-watchdog/claude-carbon
-**Duration**: ~60 minutes
-**Type**: [bugfix] [feature]
-
-### Objectives
-- Debug why tokens show as 0 in ClaudeCarbon UI despite console showing activity
-- Improve token tracking accuracy
-
-### Summary
-Fixed three critical bugs preventing token display: (1) SQLite string binding using `nil` instead of `SQLITE_TRANSIENT`, causing data corruption; (2) `NSHomeDirectory()` returning sandbox container path instead of real home; (3) App sandboxing blocking file access. Also increased output multiplier from 2.5x to 4x. Discovered that accurate token counts are available in Claude Code's session JSONL files and created a detailed plan for implementing precise tracking in v2.
-
-### Files Changed
-
-**Bug Fixes:**
-- `ClaudeCarbon/Services/DataStore.swift` - Added `SQLITE_TRANSIENT` constant, replaced all `sqlite3_bind_text(..., nil)` with `sqlite3_bind_text(..., SQLITE_TRANSIENT)` to fix string memory corruption
-- `ClaudeCarbon/Services/HistoryMonitor.swift` - Changed from `NSHomeDirectory()` to `getpwuid(getuid()).pw_dir` to get real home directory outside sandbox
-- `ClaudeCarbon/ClaudeCarbon.entitlements` - Added `com.apple.security.app-sandbox = false` to disable sandboxing
-- `ClaudeCarbon/Resources/Methodology.json` - Increased `outputMultiplier` from 2.5 to 4.0
-
-**Build Settings (via Xcode UI):**
-- Disabled "Enable App Sandbox" in target Build Settings
-
-### Technical Notes
-
-1. **SQLite String Binding Bug**: Swift strings passed to `sqlite3_bind_text()` with `nil` destructor get deallocated before SQLite uses them. Fix: use `SQLITE_TRANSIENT` (defined as `unsafeBitCast(-1, to: sqlite3_destructor_type.self)`) which tells SQLite to copy the string immediately.
-
-2. **Sandbox Home Directory Issue**: When app is sandboxed, `NSHomeDirectory()` returns `~/Library/Containers/com.app.name/Data/` instead of `/Users/username/`. Fix: use POSIX `getpwuid(getuid())` to get real home directory.
-
-3. **Token Data Discovery**: Found that Claude Code logs actual API token usage in session JSONL files at:
-   ```
-   ~/.claude/projects/{encoded-project-path}/{session-id}.jsonl
-   ```
-   Each `type: "assistant"` entry contains `message.usage.input_tokens` and `message.usage.output_tokens`.
-
-4. **Path Encoding**: Project paths are encoded with slashes replaced by dashes:
-   `/Users/tim/Projects/foo` → `-Users-tim-Projects-foo`
-
-### Future Plans & Unimplemented Phases
-
-**Plan saved at**: `~/.claude/plans/buzzing-tumbling-trinket.md`
-
-#### Phase: Accurate Token Tracking (v2)
-**Status**: Planned, not started
-
-**Goal**: Replace estimated tokens with actual token counts from session JSONL files.
-
-**Implementation Steps**:
-
-1. **Create SessionJSONLMonitor service** (`Services/SessionJSONLMonitor.swift`):
-   - Watch `~/.claude/projects/` directory for JSONL files
-   - Tail-read new lines (same pattern as HistoryMonitor)
-   - Parse `type: "assistant"` entries to extract:
-     - `sessionId`
-     - `message.model`
-     - `message.usage.input_tokens`
-     - `message.usage.output_tokens`
-   - Publish token updates via Combine `@Published var tokenUpdate: TokenUpdate?`
-
-2. **Update Session Model** (`Models/Session.swift`):
-   - Rename `estimatedOutputTokens` → `outputTokens`
-   - Add `actualModel: String?` field
-
-3. **Update DataStore Schema** (`Services/DataStore.swift`):
-   - Migration: `ALTER TABLE sessions ADD COLUMN actual_model TEXT`
-   - Migration: `ALTER TABLE sessions RENAME COLUMN estimated_output_tokens TO output_tokens`
-   - Add method: `addActualTokens(sessionId:inputTokens:outputTokens:model:)`
-
-4. **Update SessionCoordinator** (`Services/SessionCoordinator.swift`):
-   - Subscribe to SessionJSONLMonitor in addition to HistoryMonitor
-   - Accumulate actual tokens when received
-   - Remove dependency on TokenEstimator
-
-5. **Initialize in App** (`App/ClaudeCarbonApp.swift`):
-   - Add `@StateObject private var sessionJSONLMonitor = SessionJSONLMonitor()`
-   - Pass to SessionCoordinator
-
-6. **Delete TokenEstimator** (`Services/TokenEstimator.swift`):
-   - No longer needed once using actual tokens
-
-**Design Decisions**:
-- No estimation fallback - only track sessions with actual token data
-- Sum all `usage` entries per response (multiple API calls per prompt)
-- Works for both API and subscription users (Claude Code logs tokens regardless)
-
-### Next Actions
-- [ ] Commit current bug fixes (SQLite, sandbox, home directory, multiplier)
-- [ ] Execute v2 plan in new session using prompt:
-  ```
-  Execute the plan at ~/.claude/plans/buzzing-tumbling-trinket.md
-  Project: /Users/timmetz/Developer/Projects/Personal/ai-watchdog/claude-carbon
-  ```
-- [ ] Test accurate token tracking after v2 implementation
-- [ ] Add app icon images to Assets.xcassets
-
-### Metrics
-- Files modified: 4
-- Build settings changed: 1 (sandbox disabled)
-- Plans created: 1 (`buzzing-tumbling-trinket.md`)
-
----
-
-## Session Log: 2025-12-10 (Session 2)
-
-**Project**: ai-watchdog/claude-carbon
-**Duration**: ~20 minutes
-**Type**: [feature] [refactor]
-
-### Objectives
-- Execute plan at `~/.claude/plans/buzzing-tumbling-trinket.md`
-- Replace estimated token tracking with actual token counts from Claude Code's session JSONL files
-
-### Summary
-Implemented accurate token tracking by reading actual `input_tokens` and `output_tokens` from Claude Code's session JSONL files at `~/.claude/projects/{path}/{session}.jsonl`. Created new `SessionJSONLMonitor` service, updated data models and database schema, refactored `SessionCoordinator` to use actual tokens instead of estimates, and removed the now-obsolete `TokenEstimator`.
-
-### Files Changed
-
-**New File:**
-- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Monitors `~/.claude/projects/` for JSONL files, parses `type: "assistant"` entries, extracts actual token usage and model info, publishes updates via Combine
-
-**Modified Files:**
-- `ClaudeCarbon/Models/Session.swift` - Renamed `estimatedOutputTokens` → `outputTokens`, added `actualModel: String?` field
-- `ClaudeCarbon/Services/DataStore.swift` - Added schema migration (rename column, add `actual_model`), added `addActualTokens()` method, updated all SQL queries
-- `ClaudeCarbon/Services/SessionCoordinator.swift` - Removed TokenEstimator dependency, now subscribes to SessionJSONLMonitor for actual tokens
-- `ClaudeCarbon/App/ClaudeCarbonApp.swift` - Added `@StateObject` for `SessionJSONLMonitor`, passes to `SessionCoordinator`
-- `ClaudeCarbon.xcodeproj/project.pbxproj` - Removed TokenEstimator.swift, added SessionJSONLMonitor.swift
-
-**Deleted File:**
-- `ClaudeCarbon/Services/TokenEstimator.swift` - No longer needed with actual token tracking
-
-### Technical Notes
-
-1. **JSONL File Location**: Claude Code logs API responses to:
-   ```
-   ~/.claude/projects/{encoded-path}/{sessionId}.jsonl
-   ```
-   Path encoding: `/Users/tim/foo` → `-Users-tim-foo`
-
-2. **Token Extraction**: Each API response logged as `type: "assistant"` with:
-   ```json
-   {
-     "message": {
-       "model": "claude-opus-4-5-20251101",
-       "usage": { "input_tokens": 10, "output_tokens": 198 }
-     }
-   }
-   ```
-
-3. **File Monitoring Pattern**: `SessionJSONLMonitor` uses same dispatch source pattern as `HistoryMonitor`:
-   - Directory watcher for new project folders
-   - Individual file watchers per JSONL file
-   - Tail-reading with offset tracking
-
-4. **Schema Migration**: DataStore now auto-migrates old databases:
-   - Renames `estimated_output_tokens` → `output_tokens`
-   - Adds `actual_model` column
-   - Uses `PRAGMA table_info` to check existing schema
-
-5. **Architecture Change**: Token flow is now:
-   - `HistoryMonitor` → Creates session records (from history.jsonl)
-   - `SessionJSONLMonitor` → Adds actual tokens (from project JSONL files)
-   - `SessionCoordinator` → Coordinates both into `DataStore`
-
-### Future Plans & Unimplemented Phases
-
-**Core implementation complete. Remaining from plan:**
-
-#### Future Enhancement: Cache Token Accounting (Not started)
-- Account for `cache_creation_input_tokens` and `cache_read_input_tokens`
-- Cache reads are effectively "free" compute
-
-#### Future Enhancement: Per-Model Energy Coefficients (Not started)
-- Use `actual_model` to apply model-specific J/token values
-- Different coefficients for Opus vs Sonnet vs Haiku
-
-#### Future Enhancement: Historical Backfill (Not started)
-- Option to read existing JSONL files on first launch
-- Populate historical token usage
-
-### Next Actions
-- [ ] Build and test in Xcode to verify token tracking works
-- [ ] Verify tokens accumulate correctly across multiple prompts
-- [ ] Test schema migration with existing database
-- [ ] Add app icon images to Assets.xcassets
-- [ ] Commit all changes
-
-### Metrics
-- Files modified: 5
-- Files created: 1
-- Files deleted: 1
-- Lines of code: ~280 new (SessionJSONLMonitor), ~60 modified (others)
-
----
-
 ## Session Log: 2025-12-10 (Session 3)
 
 **Project**: claude-carbon
@@ -863,3 +668,174 @@ Discovered that commit `85c3da4` added a filter to skip agent JSONL files (`!fil
 ### Metrics
 - Files modified: 1 (SessionJSONLMonitor.swift)
 - Database tables cleared: 2 (jsonl_offsets, sessions)
+
+---
+
+## Session Log: 2025-12-18
+
+**Project**: claude-carbon
+**Type**: [bugfix] [feature]
+
+### Objectives
+- Fix token double-counting bug from streaming updates
+- Ensure ALL tokens are counted (including agents and cache tokens)
+- Avoid any double-counting
+
+### Summary
+Comprehensive fix for accurate token counting in Claude Carbon. Discovered and fixed three major issues: (1) streaming updates causing 1.03x-2.44x overcounting, (2) agent JSONL files being skipped entirely (losing subagent tokens), and (3) cache tokens not being counted at all (can be 99%+ of actual tokens). Implemented energy-weighted calculation for cache tokens based on their computational cost.
+
+### Files Changed
+- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Added message.id deduplication, removed agent skip filter, added cache token energy weighting
+- `ClaudeCarbon/App/ClaudeCarbonApp.swift` - Fixed initialization order (deferred SessionJSONLMonitor.start())
+- `ClaudeCarbon/App/AppDelegate.swift` - Added single-instance check
+- `METHODOLOGY.md` - Added cache token energy weighting documentation, updated version to v1.1
+- `docs/SESSION_LOG.md` - Session notes
+
+### Technical Notes
+
+#### Streaming Deduplication
+- Claude JSONL files contain multiple entries per API response (streaming updates)
+- Each entry has same `message.id` but incrementally increasing token counts
+- Fixed by collecting entries by message.id and keeping only highest `outputTokens`
+
+#### Agent Files Now Included
+- Previously: `agent-*.jsonl` files were skipped to prevent "session cross-contamination"
+- Discovery: Agent tokens are UNIQUE (different message IDs from parent session)
+- Agent files contain parent's sessionId, but tokens are attributed there (acceptable)
+- Skipping them was losing all subagent token usage
+
+#### Cache Token Energy Weighting (Major Discovery)
+- Cache tokens are ADDITIONAL to `input_tokens`, not a subset
+- Real data showed 17M+ cache tokens vs 30K input tokens in some sessions
+- Pricing ratios reflect computational cost:
+  - `cache_read_input_tokens`: 10% of normal energy (just retrieval)
+  - `cache_creation_input_tokens`: 125% of normal energy (extra work to store)
+- Formula: `effective_input = input + (cache_read × 0.1) + (cache_create × 1.25)`
+
+#### Key Sources
+- [Anthropic Prompt Caching](https://www.anthropic.com/news/prompt-caching)
+- [AWS Blog on Claude Code Caching](https://aws.amazon.com/blogs/machine-learning/supercharge-your-development-with-claude-code-and-amazon-bedrock-prompt-caching/)
+
+### Commit
+- **Hash**: `df36dc4`
+- **Message**: fix: accurate token counting with dedup, agents, and cache weighting
+- **Pushed**: Yes (origin/main)
+
+### Next Actions
+- [ ] Rebuild in Xcode (Cmd+R) and verify token counts
+- [ ] Monitor debug logs for cache token breakdown
+- [ ] Verify energy calculations reflect cache weighting
+
+### Metrics
+- Files modified: 5
+- Lines added: 168
+- Lines removed: 22
+
+---
+
+## Session Log: 2025-12-18
+
+**Project**: Claude Carbon + Logseq (Article Research)
+**Duration**: ~2 hours
+**Type**: [feature] [docs]
+
+### Objectives
+- Research AI energy usage highlights from Logseq knowledge base for LinkedIn article
+- Implement UI improvements: Today burn rate stat and "since date" footnote for All Time
+
+### Summary
+Two-part session: First, researched AI energy content from Logseq highlights (Empire of AI, Lex Fridman #459, MIT Tech Review) to help complete a LinkedIn article about Claude Carbon. Second, implemented two UI improvements: showing today's burn rate as a single stat instead of an empty chart, and adding "since [date]" footnotes to All Time views in both stats and charts screens.
+
+### Files Changed
+- `ClaudeCarbon/Views/ChartsView.swift` - Added today burn rate single stat display, All Time footnote in charts
+- `ClaudeCarbon/Views/ComparisonView.swift` - Added optional startDate parameter to HeroComparisonView
+- `ClaudeCarbon/Views/MenuBarView.swift` - Pass allTimeStartDate to HeroComparisonView
+
+### Technical Notes
+
+#### Today Burn Rate Implementation
+- `BurnRateSection` now accepts `todayUsage: DailyUsage?` parameter
+- When `timeRange == .today` and `activeSeconds >= 60`, shows single stat instead of chart
+- Displays: large formatted rate (e.g., "212k") + "tokens per active hour" caption
+- Falls back to "Not enough active time yet" if < 60 seconds
+
+#### All Time Footnote Implementation
+- Both `HeroComparisonView` (stats) and `BurnRateSection` (charts) show "since [date]"
+- Date pulled from `dataStore.getDailyUsage(days: nil).first?.date`
+- Format: `since Nov 18, 2024` using `.dateTime.month(.abbreviated).day().year()`
+
+#### Article Research Sources Compiled
+| Source | Link |
+|--------|------|
+| DOE/LBNL Data Center Report | https://www.energy.gov/articles/doe-releases-new-report-evaluating-increase-electricity-demand-data-centers |
+| Lex Fridman #459 | https://lexfridman.com/deepseek-dylan-patel-nathan-lambert/ |
+| MIT Tech Review | https://www.technologyreview.com/2025/05/20/1116327/ai-energy-usage-climate-footprint-big-tech/ |
+| EIA Household Data | https://www.eia.gov/energyexplained/use-of-energy/electricity-use-in-homes.php |
+| Joe Rogan #2422 | https://share.snipd.com/episode/48249efb-108d-464f-a88a-f7ed7d28867f |
+
+#### Key Stats for Article
+- 170,000 tokens ≈ 1 smartphone charge (from Claude Carbon methodology)
+- User's 350-500k tokens/day = 6-8 smartphone charges = ~0.5% household energy
+- 1M power users × 30% Haiku substitution = 25 GWh/year saved = 2,400 US homes
+- Opus uses ~6.7x more energy than Haiku
+
+### Commit
+- **Hash**: `32c4ab4`
+- **Message**: feat: add burn rate stat for Today view and "since date" footnote for All Time
+- **Pushed**: Yes (origin/main)
+
+### Next Actions
+- [ ] Publish LinkedIn article about Claude Carbon
+- [ ] Submit Claude Carbon to macOS App Store
+- [ ] Consider expanding Claude Carbon to track other AI tools (Claude web, Lex, etc.)
+
+### Metrics
+- Files modified: 3
+- Lines added: ~56
+- Lines removed: ~8
+
+---
+
+## Session Log: 2025-12-18
+
+**Project**: claude-carbon
+**Type**: [feature]
+
+### Objectives
+- Implement design system from `docs/design-proposal.md`
+- Apply Anthropic-complementary color scheme across all views
+
+### Summary
+Implemented centralized design system with Color+Theme.swift and Theme.swift. Replaced all hardcoded colors across 6 view files with theme colors (Fern green for energy, Ocean blue for tokens, Amber for burn rate/carbon). Updated AccentColor to Fern (#3D9A6D). Successfully built and pushed to main.
+
+### Files Changed
+- `ClaudeCarbon/App/Color+Theme.swift` - NEW: Color extension with all theme colors (Fern, Ocean, Amber, Coral, Rose, model colors, neutrals)
+- `ClaudeCarbon/App/Theme.swift` - NEW: Spacing, radius, and font size constants
+- `ClaudeCarbon/Resources/Assets.xcassets/AccentColor.colorset/Contents.json` - Updated accent to Fern (#3D9A6D)
+- `ClaudeCarbon/Views/StatsView.swift` - Replaced .blue/.green/.orange with .ocean/.fern/.amber, updated severity scales
+- `ClaudeCarbon/Views/ChartsView.swift` - Replaced chart colors with theme colors
+- `ClaudeCarbon/Views/MenuBarView.swift` - Updated leaf icon (.fern) and quit button (.coral)
+- `ClaudeCarbon/Views/ComparisonView.swift` - Updated hero background and stat icons
+- `ClaudeCarbon/Views/SessionRow.swift` - Updated folder (.ocean) and energy (.fern) colors
+- `ClaudeCarbon.xcodeproj/project.pbxproj` - Added new theme files to Xcode project
+
+### Technical Notes
+- Color mapping: `.green`→`.fern`, `.blue`→`.ocean`, `.orange`→`.amber`, `.red`→`.coral`/`.rose`
+- Severity scale now uses: `.fern` (low) → `.amber` (moderate) → `.coral` (high) → `.rose` (critical)
+- Model colors use graduated blues: Opus (dark), Sonnet (medium), Haiku (light)
+- Theme.swift provides constants but views still use inline values (future refinement possible)
+
+### Future Plans & Unimplemented Phases
+- Apply Theme.swift spacing/radius constants throughout views (currently just colors applied)
+- Consider dark mode support using the neutral colors (Carbon for dark bg, Pampas for light)
+
+### Next Actions
+- [ ] Apply Theme.swift spacing constants to views
+- [ ] Test visual appearance in Xcode
+- [ ] Consider dark mode implementation using theme neutrals
+
+### Metrics
+- Files modified: 7
+- Files created: 2
+- Commit: `0d0d96e`
+- Pushed: Yes (origin/main)
