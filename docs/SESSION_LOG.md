@@ -839,3 +839,65 @@ Implemented centralized design system with Color+Theme.swift and Theme.swift. Re
 - Files created: 2
 - Commit: `0d0d96e`
 - Pushed: Yes (origin/main)
+
+---
+
+## Session Log: 2025-12-18 (Session 2)
+
+**Project**: claude-carbon
+**Type**: [docs] [feature]
+
+### Objectives
+- Recalculate LinkedIn article numbers accounting for cached tokens
+- Update methodology documentation with external research validation
+- Replace settings view with methodology info view
+
+### Summary
+Major discovery session: the original article's "350-500k tokens/day = 6-8 phone charges" estimate was dramatically wrong. Actual measured usage (381.9M effective tokens over 30 days) translates to ~100-200 phone charges/day (~15% of US household electricity). Updated methodology with external research cross-validation and created new MethodologyView replacing the settings panel.
+
+### Files Changed
+- `METHODOLOGY.md` - Added cross-validation section with external research (OpenAI, Epoch AI, IEEE Spectrum, TokenPowerBench), uncertainty range (2-4×), explanation of why Claude Code differs from ChatGPT
+- `ClaudeCarbon/Views/ViewModePicker.swift` - Changed icon from gear to formula (f(x)), renamed "Settings" to "Methodology"
+- `ClaudeCarbon/Views/MenuBarView.swift` - Hide time picker on info view, use MethodologyView instead of EmbeddedSettingsView
+- `ClaudeCarbon/Views/SettingsView.swift` - Added MethodologyView component with: "How It Works" at top, assumptions including cache weights, GitHub methodology link, MIT license notice
+
+### Technical Notes
+
+#### Cache Token Impact on Energy Calculations
+- Original estimate: 350-500k tokens/day = 6-8 phone charges
+- Actual measured: 12.7M effective tokens/day = 100-200 phone charges
+- Cache tokens are ADDITIONAL to input_tokens, not a subset
+- With energy weighting (cache_read: 0.1×, cache_create: 1.25×), effective tokens still massive
+
+#### External Research Validation
+- OpenAI official: 0.34 Wh per simple ChatGPT query
+- IEEE Spectrum: 2.5-40 Wh for long input queries
+- Claude Code: 50-100k tokens per API call (vs ChatGPT's 500-1000)
+- Our estimates align with "long input query" range
+
+#### Collective Impact (Revised)
+- 1M power users × 4.4 kWh/day = 1.6 TWh/year = 150,000 US homes
+- 30% shift to Haiku could save 340 GWh = 32,000 homes
+
+### Article Revisions Drafted
+Provided revised paragraphs for LinkedIn article with new tone:
+1. Personal usage section (revelation framing)
+2. Why estimates were wrong (cache tokens, context size)
+3. Collective impact (1.6 TWh, 150k homes)
+4. Case for the app (can't unsee it)
+
+### Commits
+- `fd96d55` - docs: add external research validation to methodology
+- `4321415` - feat: replace settings with methodology info view
+- `d26d594` - docs: split SESSION_LOG.md into archive
+
+### Next Actions
+- [ ] Finalize and publish LinkedIn article with revised numbers
+- [ ] Test MethodologyView in Xcode to verify appearance
+- [ ] Verify "Full Methodology" link opens correctly
+
+### Metrics
+- Files modified: 4
+- Lines added: ~134
+- Commits: 3
+- Pushed: Yes (origin/main)
