@@ -26,14 +26,16 @@ struct MenuBarView: View {
 
                 Spacer()
 
-                // Compact time picker
-                Picker("", selection: $selectedTimeRange) {
-                    ForEach(TimeRange.allCases, id: \.self) { range in
-                        Text(range.rawValue).tag(range)
+                // Compact time picker (hidden on info view)
+                if selectedView != .info {
+                    Picker("", selection: $selectedTimeRange) {
+                        ForEach(TimeRange.allCases, id: \.self) { range in
+                            Text(range.rawValue).tag(range)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -69,8 +71,8 @@ struct MenuBarView: View {
                 case .charts:
                     ChartsView(dataStore: dataStore, timeRange: selectedTimeRange)
 
-                case .settings:
-                    EmbeddedSettingsView(energyCalculator: energyCalculator)
+                case .info:
+                    MethodologyView()
                 }
             }
 

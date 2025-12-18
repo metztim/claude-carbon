@@ -4,13 +4,13 @@ import SwiftUI
 enum ViewMode: CaseIterable {
     case stats
     case charts
-    case settings
+    case info
 
     var icon: String {
         switch self {
         case .stats: return "list.bullet"
         case .charts: return "chart.line.uptrend.xyaxis"
-        case .settings: return "gear"
+        case .info: return "function"
         }
     }
 
@@ -18,7 +18,7 @@ enum ViewMode: CaseIterable {
         switch self {
         case .stats: return "Stats"
         case .charts: return "Charts"
-        case .settings: return "Settings"
+        case .info: return "Methodology"
         }
     }
 }
@@ -41,9 +41,9 @@ struct ViewModePicker: View {
                 .frame(height: 16)
                 .padding(.horizontal, 6)
 
-            // Settings with slightly different treatment
-            ViewModeButton(mode: .settings, isSelected: selection == .settings) {
-                selection = .settings
+            // Info/methodology with slightly different treatment
+            ViewModeButton(mode: .info, isSelected: selection == .info) {
+                selection = .info
             }
         }
         .padding(4)
@@ -81,7 +81,7 @@ struct ViewModePicker_Previews: PreviewProvider {
         VStack(spacing: 20) {
             ViewModePicker(selection: .constant(.stats))
             ViewModePicker(selection: .constant(.charts))
-            ViewModePicker(selection: .constant(.settings))
+            ViewModePicker(selection: .constant(.info))
         }
         .padding()
     }
