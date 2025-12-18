@@ -115,6 +115,38 @@ Published research on LLM energy consumption shows wide variation:
 
 We use conservative mid-range estimates. If you have better data, [please contribute](#contributing-better-data).
 
+### Cross-Validation with External Research
+
+To validate our estimates, we compared against published per-query energy measurements:
+
+| Source | Estimate | Notes |
+|--------|----------|-------|
+| [OpenAI official](https://www.devsustainability.com/p/chatgpt-energy-usage-is-034-wh-per) | 0.34 Wh/query | Simple ChatGPT queries |
+| [Epoch AI](https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use) | 0.3 Wh/query | Typical GPT-4o text query |
+| [IEEE Spectrum](https://spectrum.ieee.org/ai-energy-use) | 2.5-40 Wh/query | Long input queries |
+| [TokenPowerBench](https://arxiv.org/html/2512.03024v1) | 0.39-4 J/token | Hardware-dependent range |
+
+**Why Claude Code differs from ChatGPT**: A typical ChatGPT query involves ~500-1000 tokens. Claude Code sessions routinely process 50,000-100,000+ tokens per API call due to:
+- Full conversation context sent with each message
+- Large codebases included as context
+- Subagent spawning (each agent has its own context)
+- Streaming updates creating multiple API entries
+
+**Sanity check**: At 1.0 J/token, a 50k-token Claude Code API call uses:
+- 50,000 × 1.0 × 1.2 PUE = 60,000 J = 16.7 Wh
+
+This aligns with the "long input query" range (2.5-40 Wh) from IEEE Spectrum research.
+
+**Uncertainty range**: Given the research spread, actual energy could be:
+
+| Scenario | J/token | Multiplier vs. baseline |
+|----------|---------|------------------------|
+| Optimistic (modern H100 + optimization) | 0.3-0.5 | 0.3-0.5× |
+| Baseline (our estimate) | 1.0 | 1× |
+| Conservative (older hardware) | 2-4 | 2-4× |
+
+Our estimates should be considered accurate to within **2-4×** in either direction. The order of magnitude is reliable; absolute values are not.
+
 ## Infrastructure Factors
 
 Energy coefficients account for model inference only. Infrastructure overhead is added separately.
@@ -262,10 +294,12 @@ Our methodology is based on publicly available research and data:
 1. **TokenPowerBench 2024**: Academic benchmark of LLM energy consumption across models
    - Published energy ranges for GPT-3, LLaMA, and similar-scale models
    - Methodology for measuring inference energy
+   - Source: [arxiv.org/html/2512.03024v1](https://arxiv.org/html/2512.03024v1)
 
 2. **Epoch AI**: AI training compute and energy research
    - Industry benchmarks for data center efficiency
    - Model architecture and scale comparisons
+   - Source: [epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use](https://epoch.ai/gradient-updates/how-much-energy-does-chatgpt-use)
 
 3. **EPA 2024**: US electricity carbon intensity data
    - eGRID database (Emissions & Generation Resource Integrated Database)
@@ -273,6 +307,15 @@ Our methodology is based on publicly available research and data:
 
 4. **Anthropic pricing data**: Publicly available API pricing
    - Used as proxy for relative compute costs between models
+   - Source: [Anthropic Prompt Caching](https://www.anthropic.com/news/prompt-caching)
+
+5. **OpenAI energy disclosure**: Official per-query energy estimates
+   - 0.34 Wh per ChatGPT query (simple queries)
+   - Source: [devsustainability.com](https://www.devsustainability.com/p/chatgpt-energy-usage-is-034-wh-per)
+
+6. **IEEE Spectrum**: Independent analysis of AI energy consumption
+   - 2.5-40 Wh range for complex/long-input queries
+   - Source: [spectrum.ieee.org/ai-energy-use](https://spectrum.ieee.org/ai-energy-use)
 
 ## Contributing Better Data
 
@@ -313,6 +356,12 @@ Help us validate estimates:
 - Share real-world usage patterns for output multiplier calibration
 
 ## Version History
+
+- **v1.2** (2025-12-18): External research validation
+  - Added cross-validation section comparing estimates to published research
+  - Added uncertainty range (2-4× in either direction)
+  - Explained why Claude Code differs from typical ChatGPT queries
+  - Added new sources: OpenAI official, IEEE Spectrum, Epoch AI, TokenPowerBench
 
 - **v1.1** (2025-12-18): Cache token energy weighting
   - Added cache_read_input_tokens (0.1× energy) and cache_creation_input_tokens (1.25× energy)
