@@ -15,6 +15,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("ClaudeCarbon: applicationDidFinishLaunching")
 
+        // SINGLE INSTANCE CHECK: Quit if another instance is already running
+        let runningApps = NSWorkspace.shared.runningApplications
+        let myBundleId = Bundle.main.bundleIdentifier ?? "com.claudecarbon.app"
+        let instances = runningApps.filter { $0.bundleIdentifier == myBundleId }
+
+        if instances.count > 1 {
+            print("ClaudeCarbon: Another instance is already running. Quitting.")
+            NSApp.terminate(nil)
+            return
+        }
+
+        // Disable automatic termination - prevents macOS from auto-quitting/restarting
+        ProcessInfo.processInfo.disableAutomaticTermination("ClaudeCarbon is a menu bar app")
+        ProcessInfo.processInfo.disableSuddenTermination()
+
         // Register URL scheme handler
         NSAppleEventManager.shared().setEventHandler(
             self,

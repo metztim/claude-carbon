@@ -48,6 +48,33 @@ Estimated output tokens = Input tokens × 2.5
 
 **Configuration**: `outputMultiplier = 2.5` (see `Methodology.json`)
 
+### Cache Token Energy Weighting
+
+Claude's API reports cache-related tokens separately from standard input tokens. ClaudeCarbon applies energy weights to these tokens based on their computational cost.
+
+**Cache token types**:
+- `cache_read_input_tokens`: Tokens retrieved from cache (minimal compute, just lookup)
+- `cache_creation_input_tokens`: Tokens stored to cache (extra compute for storage)
+
+**Energy weights applied**:
+
+| Token Type | Energy Multiplier | Rationale |
+|------------|-------------------|-----------|
+| Base input | 1.0× | Normal processing |
+| Cache read | 0.1× | 10% - minimal compute, just retrieval (reflected in Anthropic's 90% cost reduction) |
+| Cache create | 1.25× | 125% - extra work to store in cache (reflected in Anthropic's 25% cost increase) |
+
+**Formula**:
+```
+Effective input tokens = input_tokens + (cache_read × 0.1) + (cache_create × 1.25)
+```
+
+**Important**: Cache tokens are ADDITIONAL to `input_tokens`, not a subset. The Claude API reports them as separate fields in the usage data.
+
+**Why this matters**: Claude Code uses caching heavily. Real usage data shows cache tokens can be 99%+ of total tokens processed. Without weighting, energy would be massively overestimated (cache reads use 10% of normal energy) or underestimated (cache creation uses 25% more).
+
+**Sources**: [Anthropic Prompt Caching](https://www.anthropic.com/news/prompt-caching), [AWS Blog on Claude Code Caching](https://aws.amazon.com/blogs/machine-learning/supercharge-your-development-with-claude-code-and-amazon-bedrock-prompt-caching/)
+
 ### Limitations
 
 - **Not true tokenization**: We don't use Claude's actual tokenizer, so estimates will differ from real token counts
@@ -193,7 +220,7 @@ We believe in radical transparency about what we don't know.
 2. **Energy coefficient uncertainty**:
    - Haiku and Opus values are inferred from pricing (Low confidence)
    - Sonnet value is research-based but not Claude-specific (Medium confidence)
-3. **No caching accounting**: Doesn't track prompt caching, which reduces energy for repeated context
+3. **Cache token weights**: Energy weights for cache tokens (0.1× read, 1.25× create) are based on Anthropic's pricing ratios, not direct energy measurements
 4. **Output multiplier**: 2.5× is an average—your usage may vary (1.5-4× observed)
 5. **Infrastructure assumptions**: PUE and carbon intensity are industry averages, not Anthropic-specific
 6. **No lifecycle emissions**: Only operational energy, not embodied carbon in hardware
@@ -286,6 +313,10 @@ Help us validate estimates:
 - Share real-world usage patterns for output multiplier calibration
 
 ## Version History
+
+- **v1.1** (2025-12-18): Cache token energy weighting
+  - Added cache_read_input_tokens (0.1× energy) and cache_creation_input_tokens (1.25× energy)
+  - Based on Anthropic's pricing ratios as proxy for computational cost
 
 - **v1.0** (2025-01-01): Initial methodology
   - Character-based token estimation (4 chars/token)

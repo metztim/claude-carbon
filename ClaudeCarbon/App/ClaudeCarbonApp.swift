@@ -31,24 +31,29 @@ struct ClaudeCarbonApp: App {
                 dataStore: dataStore,
                 energyCalculator: energyCalculator
             )
-            .onAppear {
-                // Initialize SessionCoordinator when menu opens (needs monitor from label's .task)
-                if sessionCoordinator == nil, let monitor = sessionJSONLMonitor {
-                    sessionCoordinator = SessionCoordinator(
-                        dataStore: dataStore,
-                        historyMonitor: historyMonitor,
-                        sessionJSONLMonitor: monitor
-                    )
-                }
-            }
         } label: {
             MenuBarIconView(activityIndicator: activityIndicator)
                 .task {
                     // Initialize monitoring on app launch (not on menu click)
+                    // IMPORTANT: Create SessionCoordinator FIRST so it subscribes to token updates
+                    // before SessionJSONLMonitor starts reading historical files
                     if sessionJSONLMonitor == nil {
                         let monitor = SessionJSONLMonitor(dataStore: dataStore)
+
+                        // Create coordinator BEFORE monitor starts reading files
+                        if sessionCoordinator == nil {
+                            sessionCoordinator = SessionCoordinator(
+                                dataStore: dataStore,
+                                historyMonitor: historyMonitor,
+                                sessionJSONLMonitor: monitor
+                            )
+                        }
+
                         sessionJSONLMonitor = monitor
                         activityIndicator.connect(to: monitor)
+
+                        // Now start monitoring (reading files) after coordinator is ready
+                        monitor.start()
                     }
                 }
         }

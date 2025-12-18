@@ -53,7 +53,8 @@ class SessionJSONLMonitor: ObservableObject {
         }
         self.projectsPath = realHomeDirectory + "/.claude/projects"
 
-        startMonitoring()
+        // NOTE: Don't start monitoring here - caller must call start()
+        // This allows SessionCoordinator to subscribe to tokenUpdate before we read files
     }
 
     deinit {
@@ -62,7 +63,9 @@ class SessionJSONLMonitor: ObservableObject {
 
     // MARK: - Public Methods
 
-    func startMonitoring() {
+    /// Start monitoring JSONL files for token usage.
+    /// Call this AFTER SessionCoordinator has subscribed to tokenUpdate.
+    func start() {
         monitorQueue.async { [weak self] in
             self?.cleanupOrphanedOffsets()
             self?.setupDirectoryMonitoring()
@@ -181,8 +184,7 @@ class SessionJSONLMonitor: ObservableObject {
         }
 
         for file in files {
-            // Skip agent JSONL files - they contain parent session's ID in content
-            guard file.hasSuffix(".jsonl") && !file.hasPrefix("agent-") else { continue }
+            guard file.hasSuffix(".jsonl") else { continue }
 
             let filePath = (projectPath as NSString).appendingPathComponent(file)
 
@@ -274,16 +276,31 @@ class SessionJSONLMonitor: ObservableObject {
             return
         }
 
-        // Parse each line
+        // Parse each line, collecting by message ID to deduplicate streaming updates
         let lines = content.components(separatedBy: .newlines)
+        var messageUpdates: [String: TokenUpdate] = [:] // messageId -> best update
+
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty else { continue }
 
-            if let update = parseTokenUpdate(from: trimmed) {
-                DispatchQueue.main.async { [weak self] in
-                    self?.tokenUpdate = update
+            if let update = parseTokenUpdate(from: trimmed),
+               let msgId = parseMessageId(from: trimmed) {
+                // Keep the update with highest output_tokens (final streaming value)
+                if let existing = messageUpdates[msgId] {
+                    if update.outputTokens > existing.outputTokens {
+                        messageUpdates[msgId] = update
+                    }
+                } else {
+                    messageUpdates[msgId] = update
                 }
+            }
+        }
+
+        // Emit deduplicated updates
+        for (_, update) in messageUpdates {
+            DispatchQueue.main.async { [weak self] in
+                self?.tokenUpdate = update
             }
         }
     }
@@ -308,9 +325,21 @@ class SessionJSONLMonitor: ObservableObject {
             return nil
         }
 
-        // Extract token counts
-        let inputTokens = usage["input_tokens"] as? Int ?? 0
+        // Extract base token counts
+        let baseInputTokens = usage["input_tokens"] as? Int ?? 0
         let outputTokens = usage["output_tokens"] as? Int ?? 0
+
+        // Extract cache tokens (ADDITIONAL to input_tokens, not a subset)
+        let cacheReadTokens = usage["cache_read_input_tokens"] as? Int ?? 0
+        let cacheCreateTokens = usage["cache_creation_input_tokens"] as? Int ?? 0
+
+        // Energy-weighted input tokens:
+        // - Base input: 1.0x energy (normal processing)
+        // - Cache read: 0.1x energy (10% - minimal compute, just retrieval)
+        // - Cache create: 1.25x energy (125% - extra work to store in cache)
+        let inputTokens = baseInputTokens
+            + Int(Double(cacheReadTokens) * 0.1)
+            + Int(Double(cacheCreateTokens) * 1.25)
 
         // Extract model name
         let model = message["model"] as? String ?? "unknown"
@@ -325,7 +354,7 @@ class SessionJSONLMonitor: ObservableObject {
             timestamp = Date()
         }
 
-        print("SessionJSONLMonitor: Token update - Session: \(sessionId), Model: \(model), Input: \(inputTokens), Output: \(outputTokens)")
+        print("SessionJSONLMonitor: Token update - Session: \(sessionId), Model: \(model), Input: \(baseInputTokens) (cache_read: \(cacheReadTokens), cache_create: \(cacheCreateTokens), effective: \(inputTokens)), Output: \(outputTokens)")
 
         return TokenUpdate(
             sessionId: sessionId,
@@ -334,6 +363,16 @@ class SessionJSONLMonitor: ObservableObject {
             outputTokens: outputTokens,
             timestamp: timestamp
         )
+    }
+
+    private func parseMessageId(from jsonLine: String) -> String? {
+        guard let data = jsonLine.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let message = json["message"] as? [String: Any],
+              let id = message["id"] as? String else {
+            return nil
+        }
+        return id
     }
 }
 

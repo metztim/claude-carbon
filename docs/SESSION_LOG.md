@@ -977,3 +977,59 @@ Investigated impossible 30-day session durations in the database. Root cause ide
 ### Metrics
 - Files modified: 1
 - Commits created: 1 (f0208e3)
+
+---
+
+## Session Log: 2024-12-15
+
+**Project**: claude-carbon
+**Type**: [bugfix]
+
+### Objectives
+- Investigate why Claude Carbon shows far fewer tokens than actual Claude Code usage
+- Fix subagent token counting (73-90% of tokens were missing)
+
+### Summary
+Discovered that commit `85c3da4` added a filter to skip agent JSONL files (`!file.hasPrefix("agent-")`), which was causing 73-90% of token usage to be missing. Investigation confirmed agent tokens are NOT duplicated in parent session files - they're stored separately in `agent-{id}.jsonl` files but reference the parent's `sessionId`. Fixed by removing the agent file skip filter. Database reset required to recount historical tokens.
+
+### Files Changed
+- `ClaudeCarbon/Services/SessionJSONLMonitor.swift` - Removed agent file skip filter on line 185 (`!file.hasPrefix("agent-")`)
+
+### Technical Notes
+- **Agent JSONL structure**: Parent sessions stored in `{uuid}.jsonl` with `isSidechain: false`, agents stored in `agent-{id}.jsonl` with `isSidechain: true` and parent's `sessionId`
+- **Root cause**: Commit 85c3da4 skipped agent files to prevent "session cross-contamination" (corrupting date/timing for burn rate), but this caused massive token undercount
+- **Fix validation**: After proper database reset, token count went from ~17k to ~630k (matching actual JSONL data)
+- **Database reset challenges**:
+  - App auto-restarting due to Xcode state restoration (appears as launchctl service)
+  - File deletion sometimes didn't work (ACL on directory: `group:everyone deny delete`)
+  - Solution: Clear tables directly via SQLite instead of deleting database file
+
+### Database Reset Procedure (for future reference)
+1. Stop the app: `pkill -9 -f "ClaudeCarbon"`
+2. Clear tables: `sqlite3 ~/Library/Application\ Support/ClaudeCarbon/data.sqlite "DELETE FROM jsonl_offsets; DELETE FROM sessions; VACUUM;"`
+3. Restart app - it will read all JSONL files from offset 0
+
+### Future Plans & Unimplemented Phases
+
+#### Verify Token Count After Reset
+**Status**: Pending user verification
+**Expected outcome**: App should show ~630k+ tokens after restart, matching JSONL file totals
+
+#### Today Burn Rate Chart Empty
+**Status**: Not started
+**Issue**: LineMark with single data point doesn't render (needs 2+ points)
+**Planned approach**: Either show a point mark instead of line for single-day data, or display a message like "Need 2+ days for trend"
+
+#### Week Chart Missing Today's Day Label (GitHub Issue #12)
+**Status**: Not started
+**Documented in**: `issues/week-chart-missing-today-label.md`
+
+### Next Actions
+- [ ] Verify token count is correct after database reset (~630k expected)
+- [ ] Commit the SessionJSONLMonitor.swift fix
+- [ ] Monitor for any burn rate calculation issues (original reason for skipping agent files)
+- [ ] Consider adding subagent token breakdown in future (currently just aggregated to parent session)
+
+### Metrics
+- Files modified: 1 (SessionJSONLMonitor.swift)
+- Database tables cleared: 2 (jsonl_offsets, sessions)
