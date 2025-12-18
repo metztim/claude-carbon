@@ -9,7 +9,7 @@ struct SessionRow: View {
         HStack(alignment: .top, spacing: 12) {
             // Project indicator icon
             Image(systemName: "folder.fill")
-                .foregroundColor(.blue)
+                .foregroundColor(.ocean)
                 .font(.title3)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -35,7 +35,7 @@ struct SessionRow: View {
                         Text(formattedEnergy)
                             .font(.caption)
                     }
-                    .foregroundColor(.green)
+                    .foregroundColor(.fern)
                 }
             }
 

@@ -29,6 +29,8 @@
 		A10000000000000000000015 /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* MenuBarIconView.swift */; };
 		A10000000000000000000016 /* ViewModePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* ViewModePicker.swift */; };
 		A10000000000000000000017 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* ChartsView.swift */; };
+		A10000000000000000000018 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* Color+Theme.swift */; };
+		A10000000000000000000019 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +56,8 @@
 		A20000000000000000000015 /* MenuBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconView.swift; sourceTree = "<group>"; };
 		A20000000000000000000016 /* ViewModePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModePicker.swift; sourceTree = "<group>"; };
 		A20000000000000000000017 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000018 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
+		A20000000000000000000019 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		A30000000000000000000001 /* ClaudeCarbon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeCarbon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -102,6 +106,8 @@
 				A20000000000000000000001 /* ClaudeCarbonApp.swift */,
 				A20000000000000000000002 /* AppDelegate.swift */,
 				A20000000000000000000003 /* URLSchemeHandler.swift */,
+				A20000000000000000000018 /* Color+Theme.swift */,
+				A20000000000000000000019 /* Theme.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -243,6 +249,8 @@
 				A10000000000000000000015 /* MenuBarIconView.swift in Sources */,
 				A10000000000000000000016 /* ViewModePicker.swift in Sources */,
 				A10000000000000000000017 /* ChartsView.swift in Sources */,
+				A10000000000000000000018 /* Color+Theme.swift in Sources */,
+				A10000000000000000000019 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

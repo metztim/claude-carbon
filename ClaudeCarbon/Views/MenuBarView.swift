@@ -19,7 +19,7 @@ struct MenuBarView: View {
             // Header with title and time picker
             HStack {
                 Image(systemName: "leaf.fill")
-                    .foregroundColor(.green)
+                    .foregroundColor(.fern)
                     .font(.title3)
                 Text("Claude Carbon")
                     .font(.headline)
@@ -84,7 +84,7 @@ struct MenuBarView: View {
 
                 Button(action: { NSApplication.shared.terminate(nil) }) {
                     Image(systemName: "power")
-                        .foregroundColor(.red.opacity(0.8))
+                        .foregroundColor(.coral.opacity(0.8))
                 }
                 .buttonStyle(.plain)
             }

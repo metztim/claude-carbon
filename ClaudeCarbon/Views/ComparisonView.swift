@@ -12,7 +12,7 @@ struct HeroComparisonView: View {
             // Large icon - fixed frame for consistency
             Image(systemName: comparisonIcon)
                 .font(.system(size: 44))
-                .foregroundColor(.green)
+                .foregroundColor(.fern)
                 .frame(width: 60, height: 60)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -35,7 +35,7 @@ struct HeroComparisonView: View {
         }
         .padding(16)
         .frame(minHeight: 92) // Min height for consistency, allows growth for footnote
-        .background(Color.green.opacity(0.08))
+        .background(Color.fern.opacity(0.08))
         .cornerRadius(12)
     }
 
@@ -116,7 +116,7 @@ struct CompactStatsRow: View {
             // Tokens with model breakdown tooltip
             CompactStatItem(
                 icon: "number.circle.fill",
-                iconColor: .blue,
+                iconColor: .ocean,
                 value: formattedTokens,
                 label: "tokens"
             )
@@ -127,7 +127,7 @@ struct CompactStatsRow: View {
             // Energy
             CompactStatItem(
                 icon: "bolt.circle.fill",
-                iconColor: .green,
+                iconColor: .fern,
                 value: formattedEnergy,
                 label: "energy"
             )
@@ -137,7 +137,7 @@ struct CompactStatsRow: View {
             // Carbon
             CompactStatItem(
                 icon: "leaf.circle.fill",
-                iconColor: .orange,
+                iconColor: .amber,
                 value: formattedCarbon,
                 label: "CO₂"
             )
@@ -238,7 +238,7 @@ struct ComparisonView: View {
             // Icon
             Image(systemName: comparisonIcon)
                 .font(.title)
-                .foregroundColor(.green)
+                .foregroundColor(.fern)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Energy Impact")
@@ -327,37 +327,37 @@ struct ComparisonView_Previews: PreviewProvider {
         VStack(spacing: 12) {
             ComparisonView(energyWh: 0.05)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 5.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 50.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 500.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 10500.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 45000.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
 
             ComparisonView(energyWh: 150000.0)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.fern.opacity(0.1))
                 .cornerRadius(8)
         }
         .padding()

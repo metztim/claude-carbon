@@ -94,7 +94,7 @@ private struct TokensChartSection: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "number")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.ocean)
                 Text("Token Usage")
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -116,7 +116,7 @@ private struct TokensChartSection: View {
                         x: .value("Hour", item.date, unit: .hour),
                         y: .value("Tokens", item.tokens)
                     )
-                    .foregroundStyle(Color.blue.gradient)
+                    .foregroundStyle(Color.ocean.gradient)
                 }
                 .chartXScale(domain: startOfDay...endOfDay)
                 .chartXAxis {
@@ -154,7 +154,7 @@ private struct TokensChartSection: View {
                         x: .value("Date", item.date, unit: .day),
                         y: .value("Tokens", item.tokens)
                     )
-                    .foregroundStyle(Color.blue.gradient)
+                    .foregroundStyle(Color.ocean.gradient)
                 }
                 .chartXScale(domain: {
                     if timeRange == .allTime, let firstDate = dailyData.first?.date {
@@ -251,7 +251,7 @@ private struct BurnRateSection: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "flame")
-                    .foregroundColor(.orange)
+                    .foregroundColor(.amber)
                 Text("Burn Rate")
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -270,7 +270,7 @@ private struct BurnRateSection: View {
                 VStack(spacing: 4) {
                     Text(formatRate(tokensPerHour))
                         .font(.system(size: 28, weight: .medium, design: .rounded))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.amber)
                     Text("tokens per active hour")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -299,13 +299,13 @@ private struct BurnRateSection: View {
                         x: .value("Date", item.date, unit: .day),
                         y: .value("Tokens/hr", item.tokensPerActiveHour)
                     )
-                    .foregroundStyle(Color.orange.gradient)
+                    .foregroundStyle(Color.amber.gradient)
 
                     AreaMark(
                         x: .value("Date", item.date, unit: .day),
                         y: .value("Tokens/hr", item.tokensPerActiveHour)
                     )
-                    .foregroundStyle(Color.orange.opacity(0.1).gradient)
+                    .foregroundStyle(Color.amber.opacity(0.1).gradient)
                 }
                 .chartXScale(domain: {
                     if timeRange == .week {

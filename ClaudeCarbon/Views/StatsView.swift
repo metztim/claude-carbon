@@ -13,7 +13,7 @@ struct StatsView: View {
             VStack(spacing: 8) {
                 HStack {
                     Image(systemName: "number.circle.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.ocean)
                         .font(.title2)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -39,7 +39,7 @@ struct StatsView: View {
             // Energy Row
             HStack {
                 Image(systemName: "bolt.circle.fill")
-                    .foregroundColor(.green)
+                    .foregroundColor(.fern)
                     .font(.title2)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -66,7 +66,7 @@ struct StatsView: View {
             // Carbon Row
             HStack {
                 Image(systemName: "leaf.circle.fill")
-                    .foregroundColor(.orange)
+                    .foregroundColor(.amber)
                     .font(.title2)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -130,13 +130,13 @@ struct StatsView: View {
     private var energyColor: Color {
         switch energyWh {
         case 0..<1:
-            return .green
+            return .fern
         case 1..<10:
-            return .yellow
+            return .amber
         case 10..<100:
-            return .orange
+            return .coral
         default:
-            return .red
+            return .rose
         }
     }
 }
@@ -171,13 +171,13 @@ struct CarbonProgressBar: View {
     private var progressColor: Color {
         switch grams {
         case 0..<10:
-            return .green
+            return .fern
         case 10..<50:
-            return .yellow
+            return .amber
         case 50..<100:
-            return .orange
+            return .coral
         default:
-            return .red
+            return .rose
         }
     }
 }
@@ -188,11 +188,11 @@ struct ModelBreakdownBar: View {
     let tokensByModel: [String: Int]
     let totalTokens: Int
 
-    // Model colors - blue variants to match token section theme
+    // Model colors from theme
     private let modelColors: [String: Color] = [
-        "opus": Color(red: 0.1, green: 0.2, blue: 0.6),    // Dark navy
-        "sonnet": Color(red: 0.2, green: 0.4, blue: 0.9),  // Medium blue
-        "haiku": Color(red: 0.4, green: 0.7, blue: 1.0)    // Light blue
+        "opus": .opus,
+        "sonnet": .sonnet,
+        "haiku": .haiku
     ]
 
     // Consistent ordering
