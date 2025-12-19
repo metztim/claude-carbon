@@ -33,6 +33,12 @@ Claude Carbon makes the invisible visible - translating your token usage into re
 
 ### Option 2: Build from Source
 
+**Requirements:**
+- macOS 14.0 (Sonoma) or later
+- Xcode 15+ (free from the Mac App Store — no Apple Developer account needed)
+- ~50GB free disk space (Xcode is large)
+- 8GB RAM minimum, 16GB recommended for comfortable development
+
 1. Clone this repository:
    ```bash
    git clone https://github.com/metztim/claude-carbon.git
